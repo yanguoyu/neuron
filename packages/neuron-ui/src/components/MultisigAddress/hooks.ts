@@ -236,7 +236,7 @@ export const useSubscription = ({ walletId, isMainnet }: { walletId: string; isM
         setMultisigBanlances(res.result)
       }
     })
-  }, [setMultisigBanlances])
+  }, [setMultisigBanlances, isMainnet])
   useEffect(() => {
     const dataUpdateSubscription = DataUpdateSubject.subscribe(({ dataType, walletID: walletIDOfMessage }: any) => {
       if (walletIDOfMessage && walletIDOfMessage !== walletId) {
