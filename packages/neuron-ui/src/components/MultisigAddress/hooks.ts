@@ -3,7 +3,6 @@ import { useDialog, isSuccessResponse } from 'utils'
 import { DataUpdate as DataUpdateSubject } from 'services/subjects'
 import {
   MultisigConfig,
-  ImportMultisigConfig,
   saveMultisigConfig,
   getMultisigConfig,
   importMultisigConfig,
@@ -56,7 +55,15 @@ export const useDialogWrapper = ({
   }
 }
 
-export const useConfigManage = ({ walletId, searchKeywords }: { walletId: string; searchKeywords: string }) => {
+export const useConfigManage = ({
+  walletId,
+  searchKeywords,
+  isMainnet,
+}: {
+  walletId: string
+  searchKeywords: string
+  isMainnet: boolean
+}) => {
   const [configs, setConfigs] = useState<MultisigConfig[]>([])
   const saveConfig = useCallback(
     ({ m, n, r, addresses, fullPayload }) => {
@@ -111,6 +118,16 @@ export const useConfigManage = ({ walletId, searchKeywords }: { walletId: string
     },
     [setConfigs]
   )
+  const onImportConfig = useCallback(() => {
+    importMultisigConfig({ isMainnet, walletId }).then(res => {
+      if (isSuccessResponse(res) && res.result) {
+        const { result } = res
+        if (result) {
+          setConfigs(v => [...result, ...v])
+        }
+      }
+    })
+  }, [walletId, isMainnet])
   return {
     saveConfig,
     configs: useMemo(
@@ -125,53 +142,7 @@ export const useConfigManage = ({ walletId, searchKeywords }: { walletId: string
     updateConfig,
     deleteConfigById,
     filterConfig,
-  }
-}
-
-export const useImportConfig = ({
-  saveConfig,
-  isMainnet,
-}: {
-  isMainnet: boolean
-  saveConfig: (config: Omit<MultisigConfig, 'walletId' | 'id'>) => Promise<void>
-}) => {
-  const [importErr, setImportErr] = useState<string | undefined>()
-  const [importConfig, setImportConfig] = useState<ImportMultisigConfig | undefined>()
-  const { openDialog, closeDialog, dialogRef } = useDialogWrapper()
-  const onImportConfig = useCallback(() => {
-    importMultisigConfig(isMainnet).then(res => {
-      if (isSuccessResponse(res) && res.result) {
-        setImportConfig(res.result)
-        openDialog()
-      } else {
-        setImportConfig(undefined)
-      }
-    })
-  }, [openDialog, setImportConfig, isMainnet])
-  const closeDialogAndReset = useCallback(() => {
-    closeDialog()
-    setImportConfig(undefined)
-    setImportErr(undefined)
-  }, [closeDialog, setImportConfig, setImportErr])
-  const confirm = useCallback(() => {
-    if (importConfig) {
-      saveConfig(importConfig)
-        .then(() => {
-          closeDialogAndReset()
-          setImportConfig(undefined)
-        })
-        .catch(err => {
-          setImportErr(err.message.toString())
-        })
-    }
-  }, [closeDialogAndReset, saveConfig, importConfig])
-  return {
     onImportConfig,
-    importConfig,
-    closeDialog: closeDialogAndReset,
-    dialogRef,
-    confirm,
-    importErr,
   }
 }
 
