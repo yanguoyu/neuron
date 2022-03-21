@@ -16,6 +16,24 @@
   }
 }
 
+@mixin copyzone-fullpayload {
+  min-width: 100px;
+  max-width: calc(100% - 20px);
+  display: flex;
+  height: 1.625rem;
+
+  .overflow {
+    word-break: break-all;
+    text-align: right;
+    line-height: 1.625rem;
+    overflow: hidden;
+  }
+
+  & > span {
+    line-height: 1.625rem;
+  }
+}
+
 .dialog {
   @include dialog-container;
   padding: 30px 50px;
@@ -46,21 +64,7 @@
   }
 
   .fullPayload {
-    min-width: 100px;
-    max-width: calc(100% - 20px);
-    display: flex;
-    height: 1.625rem;
-  
-    .overflow {
-      word-break: break-all;
-      text-align: right;
-      line-height: 1.625rem;
-      overflow: hidden;
-    }
-
-    & > span {
-      line-height: 1.625rem;
-    }
+    @include copyzone-fullpayload;
   }
   
   .more {
@@ -92,4 +96,40 @@
 
 .noData {
   margin-top: 16px;
+}
+
+.sendCKBTitle {
+  display: flex;
+  line-height: 1.625rem;
+  flex-wrap: wrap;
+
+  .fullPayload {
+    @include copyzone-fullpayload;
+    flex: 1;
+    max-width: initial;
+  }
+}
+
+.sendContainer {
+  margin-top: 16px;
+  background-color: #eee;
+  padding: 8px;
+}
+
+.balance {
+  grid-area: balance;
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.sendFieldContainer {
+  & > div {
+    grid-template:
+      'address scanner add-or-remove' auto
+      'amount max add-or-remove' auto
+      'locktime locktime locktime' auto /
+      calc(100% - 120px) 50px 30px;
+  }
 }

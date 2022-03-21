@@ -183,26 +183,25 @@ export const useExportConfig = (configs: MultisigConfig[]) => {
   }
 }
 
-export const useActions = ({ deleteConfigById }: { deleteConfigById: (id: number) => void }) => {
-  const {
-    openDialog: openDeleteErrorDialog,
-    closeDialog: closeDeleteErrorDialog,
-    dialogRef: deleteErrorDialogRef,
-  } = useDialogWrapper()
-  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | undefined>()
-  const deleteConfig = useCallback(
+const useSendAction = () => {
+  const { openDialog, closeDialog, dialogRef } = useDialogWrapper()
+  const [sendFromMultisig, setSendFromMultisig] = useState<MultisigConfig | undefined>()
+  const onOpenSendDialog = useCallback(
     (option: MultisigConfig) => {
-      deleteMultisigConfig({ id: option.id }).then(res => {
-        if (isSuccessResponse(res)) {
-          deleteConfigById(option.id)
-        } else {
-          openDeleteErrorDialog()
-          setDeleteErrorMessage(typeof res.message === 'string' ? res.message : res.message.content)
-        }
-      })
+      openDialog()
+      setSendFromMultisig(option)
     },
-    [deleteConfigById, setDeleteErrorMessage, openDeleteErrorDialog]
+    [openDialog, setSendFromMultisig]
   )
+  return {
+    action: onOpenSendDialog,
+    closeDialog,
+    dialogRef,
+    sendFromMultisig,
+  }
+}
+
+const useInfoAction = () => {
   const { openDialog: openInfoDialog, closeDialog, dialogRef } = useDialogWrapper()
   const [multisigConfig, setMultisigConfig] = useState<MultisigConfig | undefined>()
   const viewMultisigConfig = useCallback(
@@ -213,18 +212,41 @@ export const useActions = ({ deleteConfigById }: { deleteConfigById: (id: number
     [openInfoDialog, setMultisigConfig]
   )
   return {
-    deleteAction: {
-      action: deleteConfig,
-      closeDialog: closeDeleteErrorDialog,
-      dialogRef: deleteErrorDialogRef,
-      deleteErrorMessage,
+    action: viewMultisigConfig,
+    closeDialog,
+    dialogRef,
+    multisigConfig,
+  }
+}
+
+const useDeleteAction = (deleteConfigById: (id: number) => void) => {
+  const { openDialog, closeDialog, dialogRef } = useDialogWrapper()
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | undefined>()
+  const deleteConfig = useCallback(
+    (option: MultisigConfig) => {
+      deleteMultisigConfig({ id: option.id }).then(res => {
+        if (isSuccessResponse(res)) {
+          deleteConfigById(option.id)
+        } else {
+          openDialog()
+          setDeleteErrorMessage(typeof res.message === 'string' ? res.message : res.message.content)
+        }
+      })
     },
-    infoAction: {
-      action: viewMultisigConfig,
-      closeDialog,
-      dialogRef,
-      multisigConfig,
-    },
+    [deleteConfigById, setDeleteErrorMessage, openDialog]
+  )
+  return {
+    action: deleteConfig,
+    closeDialog,
+    dialogRef,
+    deleteErrorMessage,
+  }
+}
+export const useActions = ({ deleteConfigById }: { deleteConfigById: (id: number) => void }) => {
+  return {
+    deleteAction: useDeleteAction(deleteConfigById),
+    infoAction: useInfoAction(),
+    sendAction: useSendAction(),
   }
 }
 
@@ -258,4 +280,40 @@ export const useSubscription = ({ walletId, isMainnet }: { walletId: string; isM
     }
   }, [walletId, getAndSaveMultisigBalances])
   return multisigBanlances
+}
+
+export const useSendInfo = () => {
+  const [sendInfoList, setSendInfoList] = useState<{ address: string; amount: string }[]>([
+    { address: '', amount: '' },
+    { address: '', amount: '' },
+  ])
+  const addSendInfo = useCallback(() => {
+    setSendInfoList(v => [...v, { address: '', amount: '' }])
+  }, [setSendInfoList])
+  const deleteSendInfo = useCallback(
+    e => {
+      const {
+        dataset: { idx = '-1' },
+      } = e.currentTarget
+      setSendInfoList(v => [...v.slice(0, +idx), ...v.slice(1 + idx)])
+    },
+    [setSendInfoList]
+  )
+  const onSendInfoChange = useCallback(e => {
+    const {
+      dataset: { idx = '-1', field },
+      value,
+    } = e.currentTarget as { dataset: { idx: string; field: 'address' | 'amount' }; value: string }
+    setSendInfoList(v => {
+      const copy = [...v]
+      copy[+idx][field] = value
+      return copy
+    })
+  }, [])
+  return {
+    sendInfoList,
+    addSendInfo,
+    deleteSendInfo,
+    onSendInfoChange,
+  }
 }

@@ -1,17 +1,33 @@
 import React, { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import { SearchBox, MessageBar, MessageBarType } from 'office-ui-fabric-react'
 import Button from 'widgets/Button'
-import { useOnLocaleChange, isMainnet as isMainnetUtil, shannonToCKBFormatter } from 'utils'
+import {
+  useOnLocaleChange,
+  isMainnet as isMainnetUtil,
+  shannonToCKBFormatter,
+  getSyncStatus,
+  getCurrentUrl,
+} from 'utils'
 import { useState as useGlobalState } from 'states'
 import MultisigAddressCreateDialog from 'components/MultisigAddressCreateDialog'
+import Balance from 'components/Balance'
 import CopyZone from 'widgets/CopyZone'
 import { More } from 'widgets/Icons/icon'
 import { CustomizableDropdown } from 'widgets/Dropdown'
 import MultisigAddressInfo from 'components/MultisigAddressInfo'
+import SendFieldset from 'components/SendFieldset'
 import { EditTextField } from 'widgets/TextField'
 import { MultisigConfig } from 'services/remote'
-import { useSearch, useDialogWrapper, useConfigManage, useExportConfig, useActions, useSubscription } from './hooks'
+import {
+  useSearch,
+  useDialogWrapper,
+  useConfigManage,
+  useExportConfig,
+  useActions,
+  useSubscription,
+  useSendInfo,
+} from './hooks'
 import styles from './multisig-address.module.scss'
 
 const searchBoxStyles = {
@@ -26,17 +42,40 @@ const searchBoxStyles = {
 }
 const messageBarStyle = { text: { alignItems: 'center' } }
 
-const tableActions = ['info', 'delete']
+const tableActions = ['info', 'delete', 'send']
+
+const SendCkbTitle = React.memo(({ fullPayload }: { fullPayload: string }) => {
+  const [t] = useTranslation()
+  return (
+    <CopyZone content={fullPayload} className={styles.fullPayload} name={t('multisig-address.table.copy-address')}>
+      <span className={styles.overflow}>{fullPayload.slice(0, -6)}</span>
+      <span>...</span>
+      <span>{fullPayload.slice(-6)}</span>
+    </CopyZone>
+  )
+})
 
 const MultisigAddress = () => {
   const [t, i18n] = useTranslation()
   useOnLocaleChange(i18n)
   const {
     wallet: { id: walletId },
-    chain: { networkID },
+    chain: {
+      networkID,
+      connectionStatus,
+      syncState: { cacheTipBlockNumber, bestKnownBlockNumber, bestKnownBlockTimestamp },
+    },
     settings: { networks = [] },
   } = useGlobalState()
   const isMainnet = isMainnetUtil(networks, networkID)
+  const syncStatus = getSyncStatus({
+    bestKnownBlockNumber,
+    bestKnownBlockTimestamp,
+    cacheTipBlockNumber,
+    currentTimestamp: Date.now(),
+    url: getCurrentUrl(networkID, networks),
+  })
+
   const multisigBanlances = useSubscription({ walletId, isMainnet })
   const { keywords, onKeywordsChange, onSearch, searchKeywords } = useSearch()
   const { openDialog, closeDialog, dialogRef, isDialogOpen } = useDialogWrapper()
@@ -45,22 +84,25 @@ const MultisigAddress = () => {
     searchKeywords,
     isMainnet,
   })
-  const { deleteAction, infoAction } = useActions({ deleteConfigById })
+  const { deleteAction, infoAction, sendAction } = useActions({ deleteConfigById })
   const onClickItem = useCallback(
     (multisigConfig: MultisigConfig) => (option: { key: string }) => {
       if (option.key === 'info') {
         infoAction.action(multisigConfig)
       } else if (option.key === 'delete') {
         deleteAction.action(multisigConfig)
+      } else if (option.key === 'send') {
+        sendAction.action(multisigConfig)
       }
     },
-    [deleteAction, infoAction]
+    [deleteAction, infoAction, sendAction]
   )
   const listActionOptions = useMemo(
     () => tableActions.map(key => ({ key, label: t(`multisig-address.table.actions.${key}`) })),
     [t]
   )
   const { selectIds, isAllSelected, onChangeChecked, onChangeCheckedAll, exportConfig } = useExportConfig(configs)
+  const { sendInfoList, addSendInfo, deleteSendInfo, onSendInfoChange } = useSendInfo()
   return (
     <div>
       <div className={styles.head}>
@@ -161,6 +203,50 @@ const MultisigAddress = () => {
         <div className={styles.ok}>
           <Button label={t('multisig-address.ok')} type="cancel" onClick={deleteAction.closeDialog} />
         </div>
+      </dialog>
+      <dialog ref={sendAction.dialogRef} className={styles.dialog}>
+        {sendAction.sendFromMultisig && (
+          <>
+            <div className={styles.sendCKBTitle}>
+              <Trans
+                i18nKey="multisig-address.send-ckb.title"
+                values={sendAction.sendFromMultisig}
+                components={[<SendCkbTitle fullPayload={sendAction.sendFromMultisig.fullPayload} />]}
+              />
+            </div>
+            <div className={styles.sendContainer}>
+              <div className={styles.balance}>
+                <Balance
+                  balance={multisigBanlances[sendAction.sendFromMultisig.fullPayload]}
+                  connectionStatus={connectionStatus}
+                  syncStatus={syncStatus}
+                />
+              </div>
+              {sendInfoList.map(({ address, amount }, idx) => (
+                <div className={styles.sendFieldContainer}>
+                  <SendFieldset
+                    idx={idx}
+                    item={{ address, amount, disabled: false }}
+                    errors={{}}
+                    isSendMax={false}
+                    isAddBtnShow={idx === sendInfoList.length - 1}
+                    isAddOneBtnDisabled={false}
+                    isMaxBtnDisabled
+                    isTimeLockable={false}
+                    isMaxBtnShow={idx === sendInfoList.length - 1}
+                    isRemoveBtnShow={sendInfoList.length > 1}
+                    onOutputAdd={addSendInfo}
+                    onOutputRemove={deleteSendInfo}
+                    onLocktimeClick={() => undefined}
+                    onScan={() => undefined}
+                    onSendMaxClick={() => undefined}
+                    onItemChange={onSendInfoChange}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </dialog>
     </div>
   )

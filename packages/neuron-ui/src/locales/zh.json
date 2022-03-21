@@ -846,6 +846,12 @@
         "notice": "导入配置一次只能导入一个，如果是文件内容是数组默认取第一个导入"
       },
       "delete-failed": "删除多签配置失败，失败原因：{{reason}}",
+      "send-ckb": {
+        "title": "从 {{m}}-of-{{n}} 多签地址 <0></0> 转账",
+        "balance": "余额",
+        "address": "地址",
+        "amount": "金额"
+      },
       "create-dialog": {
         "title": "创建多重签名地址",
         "index": "序号",
