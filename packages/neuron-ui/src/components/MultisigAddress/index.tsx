@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchBox, MessageBar, MessageBarType } from 'office-ui-fabric-react'
 import Button from 'widgets/Button'
 import { useOnLocaleChange, isMainnet as isMainnetUtil, shannonToCKBFormatter } from 'utils'
-import { useState as useGlobalState } from 'states'
+import { useState as useGlobalState, withProvider } from 'states'
 import MultisigAddressCreateDialog from 'components/MultisigAddressCreateDialog'
 import CopyZone from 'widgets/CopyZone'
 import { More } from 'widgets/Icons/icon'
@@ -12,7 +12,9 @@ import MultisigAddressInfo from 'components/MultisigAddressInfo'
 import SendFromMultisigDialog from 'components/SendFromMultisigDialog'
 import { EditTextField } from 'widgets/TextField'
 import { MultisigConfig } from 'services/remote'
+import PasswordRequest from 'components/PasswordRequest'
 import { useSearch, useDialogWrapper, useConfigManage, useExportConfig, useActions, useSubscription } from './hooks'
+
 import styles from './multisigAddress.module.scss'
 
 const searchBoxStyles = {
@@ -181,10 +183,11 @@ const MultisigAddress = () => {
           />
         )}
       </dialog>
+      <PasswordRequest />
     </div>
   )
 }
 
 MultisigAddress.displayName = 'MultisigAddress'
 
-export default MultisigAddress
+export default withProvider(MultisigAddress)

@@ -8,7 +8,7 @@ import SendFieldset from 'components/SendFieldset'
 import { isMainnet as isMainnetUtil, getSyncStatus, getCurrentUrl } from 'utils'
 import { useState as useGlobalState } from 'states'
 
-import { useSendInfo } from './hooks'
+import { useSendInfo, useOnSumbit } from './hooks'
 import styles from './sendFromMultisigDialog.module.scss'
 
 const SendCkbTitle = React.memo(({ fullPayload }: { fullPayload: string }) => {
@@ -39,6 +39,7 @@ const SendFromMultisigDialog = ({
       syncState: { cacheTipBlockNumber, bestKnownBlockNumber, bestKnownBlockTimestamp },
     },
     settings: { networks = [] },
+    wallet,
   } = useGlobalState()
   const isMainnet = isMainnetUtil(networks, networkID)
   const syncStatus = getSyncStatus({
@@ -63,6 +64,7 @@ const SendFromMultisigDialog = ({
     () => outputErrors.some(v => v.addrError || v.amountError) || sendInfoList.some(v => !v.address || !v.amount),
     [outputErrors, sendInfoList]
   )
+  const onSumbit = useOnSumbit({ outputs: sendInfoList, isMainnet })
   return (
     <>
       <div className={styles.sendCKBTitle}>
@@ -104,7 +106,9 @@ const SendFromMultisigDialog = ({
           disabled={isSendDisabled}
           label={t('multisig-address.send-ckb.send')}
           type="primary"
-          onClick={closeDialog}
+          onClick={onSumbit}
+          data-status="ready"
+          data-wallet-id={wallet.id}
         />
       </div>
     </>

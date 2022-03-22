@@ -1,5 +1,7 @@
 import { useCallback, useState, useMemo } from 'react'
 import { useOutputErrors, outputsToTotalAmount, CapacityUnit, validateOutputs, shannonToCKBFormatter } from 'utils'
+import { useDispatch } from 'states'
+import { AppActions } from 'states/stateProvider/reducer'
 
 export const useSendInfo = ({ isMainnet, balance }: { isMainnet: boolean; balance: string }) => {
   const [sendInfoList, setSendInfoList] = useState<
@@ -78,6 +80,40 @@ export const useSendInfo = ({ isMainnet, balance }: { isMainnet: boolean; balanc
     outputErrors,
     isMaxBtnDisabled,
   }
+}
+
+export const useOnSumbit = ({
+  outputs,
+  isMainnet,
+}: {
+  outputs: { address: string | undefined; amount: string | undefined; unit: CapacityUnit }[]
+  isMainnet: boolean
+}) => {
+  const dispatch = useDispatch()
+  return useCallback(
+    (e: React.FormEvent) => {
+      const {
+        dataset: { walletId, status },
+      } = e.target as HTMLFormElement
+      e.preventDefault()
+      if (status !== 'ready') {
+        return
+      }
+      try {
+        validateOutputs(outputs, isMainnet)
+        dispatch({
+          type: AppActions.RequestPassword,
+          payload: {
+            walletID: walletId as string,
+            actionType: 'send',
+          },
+        })
+      } catch {
+        // ignore
+      }
+    },
+    [dispatch, outputs, isMainnet]
+  )
 }
 
 export default {
