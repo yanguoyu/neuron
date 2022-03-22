@@ -222,8 +222,8 @@ const MultisigAddress = () => {
                   syncStatus={syncStatus}
                 />
               </div>
-              {sendInfoList.map(({ address, amount }, idx) => (
-                <div className={styles.sendFieldContainer}>
+              <div className={styles.sendFieldContainer}>
+                {sendInfoList.map(({ address, amount }, idx) => (
                   <SendFieldset
                     idx={idx}
                     item={{ address, amount, disabled: false }}
@@ -242,8 +242,8 @@ const MultisigAddress = () => {
                     onSendMaxClick={() => undefined}
                     onItemChange={onSendInfoChange}
                   />
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </>
         )}

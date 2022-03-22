@@ -283,10 +283,7 @@ export const useSubscription = ({ walletId, isMainnet }: { walletId: string; isM
 }
 
 export const useSendInfo = () => {
-  const [sendInfoList, setSendInfoList] = useState<{ address: string; amount: string }[]>([
-    { address: '', amount: '' },
-    { address: '', amount: '' },
-  ])
+  const [sendInfoList, setSendInfoList] = useState<{ address: string; amount: string }[]>([{ address: '', amount: '' }])
   const addSendInfo = useCallback(() => {
     setSendInfoList(v => [...v, { address: '', amount: '' }])
   }, [setSendInfoList])
@@ -295,7 +292,7 @@ export const useSendInfo = () => {
       const {
         dataset: { idx = '-1' },
       } = e.currentTarget
-      setSendInfoList(v => [...v.slice(0, +idx), ...v.slice(1 + idx)])
+      setSendInfoList(v => [...v.slice(0, +idx), ...v.slice(+idx + 1)])
     },
     [setSendInfoList]
   )
