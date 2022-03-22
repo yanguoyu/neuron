@@ -1,34 +1,19 @@
 import React, { useCallback, useMemo } from 'react'
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { SearchBox, MessageBar, MessageBarType } from 'office-ui-fabric-react'
 import Button from 'widgets/Button'
-import {
-  useOnLocaleChange,
-  isMainnet as isMainnetUtil,
-  shannonToCKBFormatter,
-  getSyncStatus,
-  getCurrentUrl,
-} from 'utils'
+import { useOnLocaleChange, isMainnet as isMainnetUtil, shannonToCKBFormatter } from 'utils'
 import { useState as useGlobalState } from 'states'
 import MultisigAddressCreateDialog from 'components/MultisigAddressCreateDialog'
-import Balance from 'components/Balance'
 import CopyZone from 'widgets/CopyZone'
 import { More } from 'widgets/Icons/icon'
 import { CustomizableDropdown } from 'widgets/Dropdown'
 import MultisigAddressInfo from 'components/MultisigAddressInfo'
-import SendFieldset from 'components/SendFieldset'
+import SendFromMultisigDialog from 'components/SendFromMultisigDialog'
 import { EditTextField } from 'widgets/TextField'
 import { MultisigConfig } from 'services/remote'
-import {
-  useSearch,
-  useDialogWrapper,
-  useConfigManage,
-  useExportConfig,
-  useActions,
-  useSubscription,
-  useSendInfo,
-} from './hooks'
-import styles from './multisig-address.module.scss'
+import { useSearch, useDialogWrapper, useConfigManage, useExportConfig, useActions, useSubscription } from './hooks'
+import styles from './multisigAddress.module.scss'
 
 const searchBoxStyles = {
   root: {
@@ -44,37 +29,15 @@ const messageBarStyle = { text: { alignItems: 'center' } }
 
 const tableActions = ['info', 'delete', 'send']
 
-const SendCkbTitle = React.memo(({ fullPayload }: { fullPayload: string }) => {
-  const [t] = useTranslation()
-  return (
-    <CopyZone content={fullPayload} className={styles.fullPayload} name={t('multisig-address.table.copy-address')}>
-      <span className={styles.overflow}>{fullPayload.slice(0, -6)}</span>
-      <span>...</span>
-      <span>{fullPayload.slice(-6)}</span>
-    </CopyZone>
-  )
-})
-
 const MultisigAddress = () => {
   const [t, i18n] = useTranslation()
   useOnLocaleChange(i18n)
   const {
     wallet: { id: walletId },
-    chain: {
-      networkID,
-      connectionStatus,
-      syncState: { cacheTipBlockNumber, bestKnownBlockNumber, bestKnownBlockTimestamp },
-    },
+    chain: { networkID },
     settings: { networks = [] },
   } = useGlobalState()
   const isMainnet = isMainnetUtil(networks, networkID)
-  const syncStatus = getSyncStatus({
-    bestKnownBlockNumber,
-    bestKnownBlockTimestamp,
-    cacheTipBlockNumber,
-    currentTimestamp: Date.now(),
-    url: getCurrentUrl(networkID, networks),
-  })
 
   const multisigBanlances = useSubscription({ walletId, isMainnet })
   const { keywords, onKeywordsChange, onSearch, searchKeywords } = useSearch()
@@ -108,17 +71,6 @@ const MultisigAddress = () => {
     }
     return ''
   }, [multisigBanlances, sendAction.sendFromMultisig])
-  const {
-    sendInfoList,
-    addSendInfo,
-    deleteSendInfo,
-    onSendInfoChange,
-    onSendMaxClick,
-    isSendMax,
-    outputErrors,
-    isAddOneBtnDisabled,
-    isMaxBtnDisabled,
-  } = useSendInfo({ isMainnet, balance: sendTotalBalance })
   return (
     <div>
       <div className={styles.head}>
@@ -221,46 +173,12 @@ const MultisigAddress = () => {
         </div>
       </dialog>
       <dialog ref={sendAction.dialogRef} className={styles.dialog}>
-        {sendAction.sendFromMultisig && (
-          <>
-            <div className={styles.sendCKBTitle}>
-              <Trans
-                i18nKey="multisig-address.send-ckb.title"
-                values={sendAction.sendFromMultisig}
-                components={[<SendCkbTitle fullPayload={sendAction.sendFromMultisig.fullPayload} />]}
-              />
-            </div>
-            <div className={styles.sendContainer}>
-              <div className={styles.balance}>
-                <Balance balance={sendTotalBalance} connectionStatus={connectionStatus} syncStatus={syncStatus} />
-              </div>
-              <div className={styles.sendFieldContainer}>
-                {sendInfoList.map(({ address, amount }, idx) => (
-                  <SendFieldset
-                    key={address || idx}
-                    idx={idx}
-                    item={{ address, amount, disabled: idx === sendInfoList.length - 1 && isSendMax }}
-                    errors={outputErrors[idx]}
-                    isSendMax={isSendMax}
-                    isAddBtnShow={idx === sendInfoList.length - 1}
-                    isAddOneBtnDisabled={isAddOneBtnDisabled}
-                    isMaxBtnDisabled={isMaxBtnDisabled}
-                    isTimeLockable={false}
-                    isMaxBtnShow={idx === sendInfoList.length - 1}
-                    isRemoveBtnShow={sendInfoList.length > 1}
-                    onOutputAdd={addSendInfo}
-                    onOutputRemove={deleteSendInfo}
-                    onSendMaxClick={onSendMaxClick}
-                    onItemChange={onSendInfoChange}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className={styles.sendActions}>
-              <Button label={t('multisig-address.send-ckb.cancel')} type="cancel" onClick={sendAction.closeDialog} />
-              <Button label={t('multisig-address.send-ckb.send')} type="primary" onClick={sendAction.closeDialog} />
-            </div>
-          </>
+        {sendAction.isDialogOpen && sendAction.sendFromMultisig && (
+          <SendFromMultisigDialog
+            closeDialog={sendAction.closeDialog}
+            multisigConfig={sendAction.sendFromMultisig}
+            balance={sendTotalBalance}
+          />
         )}
       </dialog>
     </div>
