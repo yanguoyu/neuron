@@ -34,8 +34,8 @@ interface SendSubformProps {
   isTimeLockable?: boolean
   onOutputAdd: () => void
   onOutputRemove: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
-  onLocktimeClick: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
-  onScan: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
+  onLocktimeClick?: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
+  onScan?: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
   onSendMaxClick: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
   onItemChange: React.EventHandler<React.SyntheticEvent<HTMLInputElement>>
 }

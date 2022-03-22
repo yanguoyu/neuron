@@ -111,7 +111,7 @@
 }
 
 .sendContainer {
-  margin-top: 16px;
+  margin: 16px 0;
   background-color: #eee;
   padding: 8px;
 }
@@ -125,14 +125,21 @@
 }
 
 .sendFieldContainer {
-  max-height: 90vh;
-  overflow: auto;
-
   & > div {
     grid-template:
       'address scanner add-or-remove' auto
       'amount max add-or-remove' auto
       'locktime locktime locktime' auto /
       calc(100% - 130px) 50px 30px;
+  }
+}
+
+.sendActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+
+  & > button {
+    margin-left: 12px;
   }
 }

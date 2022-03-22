@@ -102,7 +102,23 @@ const MultisigAddress = () => {
     [t]
   )
   const { selectIds, isAllSelected, onChangeChecked, onChangeCheckedAll, exportConfig } = useExportConfig(configs)
-  const { sendInfoList, addSendInfo, deleteSendInfo, onSendInfoChange } = useSendInfo()
+  const sendTotalBalance = useMemo(() => {
+    if (sendAction.sendFromMultisig?.fullPayload) {
+      return multisigBanlances[sendAction.sendFromMultisig.fullPayload]
+    }
+    return ''
+  }, [multisigBanlances, sendAction.sendFromMultisig])
+  const {
+    sendInfoList,
+    addSendInfo,
+    deleteSendInfo,
+    onSendInfoChange,
+    onSendMaxClick,
+    isSendMax,
+    outputErrors,
+    isAddOneBtnDisabled,
+    isMaxBtnDisabled,
+  } = useSendInfo({ isMainnet, balance: sendTotalBalance })
   return (
     <div>
       <div className={styles.head}>
@@ -216,34 +232,33 @@ const MultisigAddress = () => {
             </div>
             <div className={styles.sendContainer}>
               <div className={styles.balance}>
-                <Balance
-                  balance={multisigBanlances[sendAction.sendFromMultisig.fullPayload]}
-                  connectionStatus={connectionStatus}
-                  syncStatus={syncStatus}
-                />
+                <Balance balance={sendTotalBalance} connectionStatus={connectionStatus} syncStatus={syncStatus} />
               </div>
               <div className={styles.sendFieldContainer}>
                 {sendInfoList.map(({ address, amount }, idx) => (
                   <SendFieldset
+                    key={address || idx}
                     idx={idx}
-                    item={{ address, amount, disabled: false }}
-                    errors={{}}
-                    isSendMax={false}
+                    item={{ address, amount, disabled: idx === sendInfoList.length - 1 && isSendMax }}
+                    errors={outputErrors[idx]}
+                    isSendMax={isSendMax}
                     isAddBtnShow={idx === sendInfoList.length - 1}
-                    isAddOneBtnDisabled={false}
-                    isMaxBtnDisabled
+                    isAddOneBtnDisabled={isAddOneBtnDisabled}
+                    isMaxBtnDisabled={isMaxBtnDisabled}
                     isTimeLockable={false}
                     isMaxBtnShow={idx === sendInfoList.length - 1}
                     isRemoveBtnShow={sendInfoList.length > 1}
                     onOutputAdd={addSendInfo}
                     onOutputRemove={deleteSendInfo}
-                    onLocktimeClick={() => undefined}
-                    onScan={() => undefined}
-                    onSendMaxClick={() => undefined}
+                    onSendMaxClick={onSendMaxClick}
                     onItemChange={onSendInfoChange}
                   />
                 ))}
               </div>
+            </div>
+            <div className={styles.sendActions}>
+              <Button label={t('multisig-address.send-ckb.cancel')} type="cancel" onClick={sendAction.closeDialog} />
+              <Button label={t('multisig-address.send-ckb.send')} type="primary" onClick={sendAction.closeDialog} />
             </div>
           </>
         )}

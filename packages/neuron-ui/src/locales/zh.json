@@ -850,7 +850,9 @@
         "title": "从 {{m}}-of-{{n}} 多签地址 <0></0> 转账",
         "balance": "余额",
         "address": "地址",
-        "amount": "金额"
+        "amount": "金额",
+        "send": "发送",
+        "cancel": "取消"
       },
       "create-dialog": {
         "title": "创建多重签名地址",

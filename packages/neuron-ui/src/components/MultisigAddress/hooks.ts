@@ -1,5 +1,13 @@
 import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react'
-import { useDialog, isSuccessResponse } from 'utils'
+import {
+  useDialog,
+  isSuccessResponse,
+  useOutputErrors,
+  outputsToTotalAmount,
+  CapacityUnit,
+  validateOutputs,
+  shannonToCKBFormatter,
+} from 'utils'
 import { DataUpdate as DataUpdateSubject } from 'services/subjects'
 import {
   MultisigConfig,
@@ -282,11 +290,15 @@ export const useSubscription = ({ walletId, isMainnet }: { walletId: string; isM
   return multisigBanlances
 }
 
-export const useSendInfo = () => {
-  const [sendInfoList, setSendInfoList] = useState<{ address: string; amount: string }[]>([{ address: '', amount: '' }])
+export const useSendInfo = ({ isMainnet, balance }: { isMainnet: boolean; balance: string }) => {
+  const [sendInfoList, setSendInfoList] = useState<
+    { address: string | undefined; amount: string | undefined; unit: CapacityUnit }[]
+  >([{ address: undefined, amount: undefined, unit: CapacityUnit.CKB }])
+  const [isSendMax, setIsSendMax] = useState(false)
   const addSendInfo = useCallback(() => {
-    setSendInfoList(v => [...v, { address: '', amount: '' }])
-  }, [setSendInfoList])
+    setSendInfoList(v => [...v, { address: undefined, amount: undefined, unit: CapacityUnit.CKB }])
+    setIsSendMax(false)
+  }, [setSendInfoList, setIsSendMax])
   const deleteSendInfo = useCallback(
     e => {
       const {
@@ -307,10 +319,52 @@ export const useSendInfo = () => {
       return copy
     })
   }, [])
+  const onSendMaxClick = useCallback(
+    e => {
+      const {
+        dataset: { isOn = 'false' },
+      } = e.currentTarget
+      const sendMaxOnClick = isOn === 'false'
+      setIsSendMax(sendMaxOnClick)
+      setSendInfoList(originalValue => {
+        const copy = [...originalValue]
+        if (sendMaxOnClick) {
+          const totalAmount = outputsToTotalAmount(copy.slice(0, copy.length - 1).filter(v => !!v.amount))
+          copy[copy.length - 1].amount = shannonToCKBFormatter((BigInt(balance) - BigInt(totalAmount)).toString())
+        } else {
+          copy[copy.length - 1].amount = '0'
+        }
+        return copy
+      })
+    },
+    [setIsSendMax, balance]
+  )
+  const outputErrors = useOutputErrors(sendInfoList, isMainnet)
+  const isAddOneBtnDisabled = useMemo(() => {
+    const totalAmount = outputsToTotalAmount(sendInfoList.filter(v => !!v.amount))
+    return (
+      outputErrors.some(v => v.addrError || v.amountError) ||
+      sendInfoList.some(v => !v.address || !v.amount) ||
+      BigInt(totalAmount) >= BigInt(balance)
+    )
+  }, [outputErrors, sendInfoList, balance])
+  const isMaxBtnDisabled = useMemo(() => {
+    try {
+      validateOutputs(sendInfoList, isMainnet, true)
+    } catch {
+      return true
+    }
+    return false
+  }, [sendInfoList, isMainnet])
   return {
     sendInfoList,
     addSendInfo,
     deleteSendInfo,
     onSendInfoChange,
+    isSendMax,
+    onSendMaxClick,
+    isAddOneBtnDisabled,
+    outputErrors,
+    isMaxBtnDisabled,
   }
 }
