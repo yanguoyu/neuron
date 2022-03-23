@@ -857,7 +857,9 @@
         "title": "Send ckb from {{m}}-of-{{n}} multisig address: <0></0>",
         "balance": "Balance",
         "address": "Address",
-        "amount": "Amount"
+        "amount": "Amount",
+        "send": "Send",
+        "cancel": "Cancel"
       },
       "create-dialog": {
         "title": "Create multisig address",
