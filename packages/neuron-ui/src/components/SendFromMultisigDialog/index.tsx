@@ -3,9 +3,9 @@ import { useTranslation, Trans } from 'react-i18next'
 import { MultisigConfig } from 'services/remote'
 import Button from 'widgets/Button'
 import CopyZone from 'widgets/CopyZone'
-import Balance from 'components/Balance'
+import TextField from 'widgets/TextField'
 import SendFieldset from 'components/SendFieldset'
-import { isMainnet as isMainnetUtil, getSyncStatus, getCurrentUrl } from 'utils'
+import { isMainnet as isMainnetUtil, shannonToCKBFormatter, validateTotalAmount } from 'utils'
 import { useState as useGlobalState } from 'states'
 
 import { useSendInfo, useOnSumbit } from './hooks'
@@ -33,22 +33,11 @@ const SendFromMultisigDialog = ({
 }) => {
   const [t] = useTranslation()
   const {
-    chain: {
-      networkID,
-      connectionStatus,
-      syncState: { cacheTipBlockNumber, bestKnownBlockNumber, bestKnownBlockTimestamp },
-    },
+    chain: { networkID },
     settings: { networks = [] },
     wallet,
   } = useGlobalState()
   const isMainnet = isMainnetUtil(networks, networkID)
-  const syncStatus = getSyncStatus({
-    bestKnownBlockNumber,
-    bestKnownBlockTimestamp,
-    cacheTipBlockNumber,
-    currentTimestamp: Date.now(),
-    url: getCurrentUrl(networkID, networks),
-  })
   const {
     sendInfoList,
     isSendMax,
@@ -59,12 +48,26 @@ const SendFromMultisigDialog = ({
     deleteSendInfo,
     onSendMaxClick,
     onSendInfoChange,
-  } = useSendInfo({ isMainnet, balance })
+    totalAmount,
+    errorMessage,
+  } = useSendInfo({ isMainnet, balance, address: multisigConfig.fullPayload, t })
+  const totalAmountErrorMessage = useMemo(() => {
+    let errorMessageUnderTotal = errorMessage
+    try {
+      validateTotalAmount(totalAmount, '0', balance)
+    } catch (err) {
+      errorMessageUnderTotal = t(err.message)
+    }
+    return errorMessageUnderTotal
+  }, [errorMessage, totalAmount, balance, t])
   const isSendDisabled = useMemo(
-    () => outputErrors.some(v => v.addrError || v.amountError) || sendInfoList.some(v => !v.address || !v.amount),
-    [outputErrors, sendInfoList]
+    () =>
+      outputErrors.some(v => v.addrError || v.amountError) ||
+      sendInfoList.some(v => !v.address || !v.amount) ||
+      !!totalAmountErrorMessage,
+    [outputErrors, sendInfoList, totalAmountErrorMessage]
   )
-  const onSumbit = useOnSumbit({ outputs: sendInfoList, isMainnet })
+  const onSumbit = useOnSumbit({ outputs: sendInfoList, isMainnet, multisigReadySend: multisigConfig.m === 1 })
   return (
     <>
       <div className={styles.sendCKBTitle}>
@@ -76,7 +79,10 @@ const SendFromMultisigDialog = ({
       </div>
       <div className={styles.sendContainer}>
         <div className={styles.balance}>
-          <Balance balance={balance} connectionStatus={connectionStatus} syncStatus={syncStatus} />
+          <span>{`${t('overview.balance')}:`}</span>
+          <CopyZone content={shannonToCKBFormatter(balance, false, '')} name={t('overview.copy-balance')}>
+            <span className={styles.balanceValue}>{shannonToCKBFormatter(balance)}</span>
+          </CopyZone>
         </div>
         <div className={styles.sendFieldContainer}>
           {sendInfoList.map(({ address, amount }, idx) => (
@@ -99,6 +105,13 @@ const SendFromMultisigDialog = ({
             />
           ))}
         </div>
+        <TextField
+          field="totalAmount"
+          label={t('send.total-amount')}
+          value={`${shannonToCKBFormatter(totalAmount)} CKB`}
+          readOnly
+          error={totalAmountErrorMessage}
+        />
       </div>
       <div className={styles.sendActions}>
         <Button label={t('multisig-address.send-ckb.cancel')} type="cancel" onClick={closeDialog} />

@@ -462,6 +462,20 @@ export default class WalletsController {
     }
   }
 
+  public async generateMultisigTx(params: { items: { address: string; capacity: string }[]; multisigAddress: string }) {
+    if (!params) {
+      throw new IsRequired('Parameters')
+    }
+    const addresses: string[] = params.items.map(i => i.address)
+    this.checkAddresses(addresses)
+
+    const tx: Transaction = await new TransactionSender().generateMultisigTx(params.items, params.multisigAddress)
+    return {
+      status: ResponseCode.Success,
+      result: tx
+    }
+  }
+
   public async updateAddressDescription({
     walletID,
     address,

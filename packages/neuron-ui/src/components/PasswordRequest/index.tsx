@@ -28,7 +28,7 @@ const PasswordRequest = () => {
     app: {
       send: { description, generatedTx },
       loadings: { sending: isSending = false },
-      passwordRequest: { walletID = '', actionType = null },
+      passwordRequest: { walletID = '', actionType = null, multisigReadySend },
     },
     settings: { wallets = [] },
     experimental,
@@ -65,10 +65,15 @@ const PasswordRequest = () => {
       case 'send-nft':
       case 'send':
         return OfflineSignType.Regular
+      case 'send-from-multisig':
+        if (multisigReadySend) {
+          return OfflineSignType.Regular
+        }
+        return OfflineSignType.SendFromMultisigOnlySig
       default:
         return OfflineSignType.Invalid
     }
-  }, [actionType])
+  }, [actionType, multisigReadySend])
 
   const exportTransaction = useCallback(async () => {
     onDismiss()
@@ -367,9 +372,11 @@ const PasswordRequest = () => {
           ) : null}
           <div className={styles.right}>
             <Button label={t('common.cancel')} type="cancel" onClick={onDismiss} />
-            <Button label={t('common.confirm')} type="submit" disabled={disabled}>
-              {isLoading ? <Spinner /> : (t('common.confirm') as string)}
-            </Button>
+            {signType === OfflineSignType.SendFromMultisigOnlySig || (
+              <Button label={t('common.confirm')} type="submit" disabled={disabled}>
+                {isLoading ? <Spinner /> : (t('common.confirm') as string)}
+              </Button>
+            )}
           </div>
         </div>
       </form>

@@ -919,7 +919,7 @@ describe('CellsService', () => {
     });
   })
 
-  it('getMultisigBalance', async () => {
+  it('getMultisigBalances', async () => {
     const capacity = '1000'
     const lockScript = Script.fromObject({
       codeHash: SystemScriptInfo.MULTI_SIGN_CODE_HASH,

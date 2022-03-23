@@ -418,7 +418,7 @@ export default class CellsService {
   // gather inputs for generateTx
   public static gatherInputs = async (
     capacity: string,
-    walletId: string,
+    walletId?: string,
     fee: string = '0',
     feeRate: string = '0',
     baseSize: number = 0,
@@ -429,8 +429,9 @@ export default class CellsService {
       witness: WitnessArgs
     },
     lockClass: {
+      lockArgs?: string | string[]
       codeHash: string
-      hashType: ScriptHashType.Type
+      hashType: ScriptHashType
     } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type }
   ): Promise<{
     inputs: Input[]
@@ -438,6 +439,9 @@ export default class CellsService {
     finalFee: string
     hasChangeOutput: boolean
   }> => {
+    if (!walletId && !lockClass.lockArgs) {
+      throw new Error('no input from')
+    }
     const capacityInt = BigInt(capacity)
     const feeInt = BigInt(fee)
     const feeRateInt = BigInt(feeRate)
@@ -458,11 +462,18 @@ export default class CellsService {
         output.status IN (:...statuses) AND
         hasData = false AND
         typeHash is null AND
-        output.lockArgs in (
-          SELECT publicKeyInBlake160
-          FROM hd_public_key_info
-          WHERE walletId = :walletId
-        ) AND
+        ${
+          walletId
+            ? `
+          output.lockArgs in (
+            SELECT publicKeyInBlake160
+            FROM hd_public_key_info
+            WHERE walletId = :walletId
+          )`
+            : typeof lockClass.lockArgs === 'string'
+            ? 'output.lockArgs = :lockArgs'
+            : 'output.lockArgs in (:lockArgs)'
+        } AND
         output.lockCodeHash = :lockCodeHash AND
         output.lockHashType = :lockHashType
         `,
@@ -470,7 +481,8 @@ export default class CellsService {
           walletId,
           statuses: [OutputStatus.Live, OutputStatus.Sent],
           lockCodeHash: lockClass.codeHash,
-          lockHashType: lockClass.hashType
+          lockHashType: lockClass.hashType,
+          lockArgs: lockClass.lockArgs
         }
       )
       .getMany()

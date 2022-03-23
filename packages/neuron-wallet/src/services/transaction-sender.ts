@@ -1,7 +1,7 @@
 import WalletService, { Wallet } from 'services/wallets'
 import WalletsService from 'services/wallets'
 import NodeService from './node'
-import { serializeWitnessArgs, toUint64Le } from '@nervosnetwork/ckb-sdk-utils'
+import { addressToScript, serializeWitnessArgs, toUint64Le } from '@nervosnetwork/ckb-sdk-utils'
 import { TransactionPersistor, TransactionGenerator, TargetOutput } from './tx'
 import AddressService from './addresses'
 import { Address } from 'models/address'
@@ -294,6 +294,28 @@ export default class TransactionSender {
     const tx: Transaction = await TransactionGenerator.generateSendingAllTx(walletID, targetOutputs, fee, feeRate)
 
     return tx
+  }
+
+  public async generateMultisigTx(items: TargetOutput[] = [], multisigAddress: string): Promise<Transaction> {
+    const targetOutputs = items.map(item => ({
+      ...item,
+      capacity: BigInt(item.capacity).toString()
+    }))
+
+    try {
+      const lockScript = addressToScript(multisigAddress)
+      const tx: Transaction = await TransactionGenerator.generateTx('', targetOutputs, multisigAddress, '0', '0', {
+        lockArgs: lockScript.args,
+        codeHash: SystemScriptInfo.MULTI_SIGN_CODE_HASH,
+        hashType: SystemScriptInfo.MULTI_SIGN_HASH_TYPE
+      })
+      return tx
+    } catch (error) {
+      if (error instanceof CapacityNotEnoughForChange) {
+        throw new CapacityNotEnoughForChangeByTransfer()
+      }
+      throw error
+    }
   }
 
   public generateTransferNftTx = async (

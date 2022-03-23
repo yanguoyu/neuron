@@ -12,6 +12,7 @@ export enum OfflineSignType {
   UnlockDAO = 'UnlockDAO',
   CreateSUDTAccount = 'CreateSUDTAccount',
   SendSUDT = 'SendSUDT',
+  SendFromMultisigOnlySig = 'SendFromMultisigOnlySig',
   Invalid = 'Invalid',
 }
 
