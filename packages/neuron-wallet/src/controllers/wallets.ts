@@ -8,6 +8,7 @@ import Keychain from 'models/keys/keychain'
 import { validateMnemonic, mnemonicToSeedSync } from 'models/keys/mnemonic'
 import { AccountExtendedPublicKey, ExtendedPrivateKey, generateMnemonic } from 'models/keys/key'
 import CommandSubject from 'models/subjects/command'
+import MultisigConfigModel from 'models/multisig-config'
 import { ResponseCode } from 'utils/const'
 import {
   CurrentWalletNotSet,
@@ -462,14 +463,28 @@ export default class WalletsController {
     }
   }
 
-  public async generateMultisigTx(params: { items: { address: string; capacity: string }[]; multisigAddress: string }) {
+  public async generateMultisigTx(params: {
+    items: { address: string; capacity: string }[]
+    multisigConfig: {
+      walletId: string
+      r: number
+      m: number
+      n: number
+      addresses: string[]
+      alias: string
+      fullPayload: string
+    }
+  }) {
     if (!params) {
       throw new IsRequired('Parameters')
     }
     const addresses: string[] = params.items.map(i => i.address)
     this.checkAddresses(addresses)
 
-    const tx: Transaction = await new TransactionSender().generateMultisigTx(params.items, params.multisigAddress)
+    const tx: Transaction = await new TransactionSender().generateMultisigTx(
+      params.items,
+      MultisigConfigModel.fromObject(params.multisigConfig)
+    )
     return {
       status: ResponseCode.Success,
       result: tx

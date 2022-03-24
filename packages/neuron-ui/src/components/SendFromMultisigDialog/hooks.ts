@@ -2,7 +2,7 @@ import { useCallback, useState, useMemo, useEffect } from 'react'
 import { useOutputErrors, outputsToTotalAmount, CapacityUnit, validateOutputs, CKBToShannonFormatter } from 'utils'
 import { useDispatch } from 'states'
 import { AppActions, StateDispatch } from 'states/stateProvider/reducer'
-import { generateMultisigTx } from 'services/remote'
+import { generateMultisigTx, MultisigConfig } from 'services/remote'
 import { TFunction } from 'i18next'
 
 let generateTxTimer: ReturnType<typeof setTimeout>
@@ -13,12 +13,14 @@ const generateMultisigTxWith = ({
   dispatch,
   setErrorMessage,
   t,
+  multisigConfig,
 }: {
   sendInfoList: { address: string | undefined; amount: string | undefined; unit: CapacityUnit }[]
   multisigAddress: string
   dispatch: StateDispatch
   setErrorMessage: React.Dispatch<React.SetStateAction<string>>
   t: TFunction
+  multisigConfig: MultisigConfig
 }) => {
   try {
     const realParams = {
@@ -27,6 +29,7 @@ const generateMultisigTxWith = ({
         capacity: CKBToShannonFormatter(item.amount, item.unit),
       })),
       multisigAddress,
+      multisigConfig,
     }
     generateMultisigTx(realParams)
       .then((res: any) => {
@@ -62,11 +65,13 @@ export const useSendInfo = ({
   balance,
   address: multisigAddress,
   t,
+  multisigConfig,
 }: {
   isMainnet: boolean
   balance: string
   address: string
   t: TFunction
+  multisigConfig: MultisigConfig
 }) => {
   const [sendInfoList, setSendInfoList] = useState<
     { address: string | undefined; amount: string | undefined; unit: CapacityUnit }[]
@@ -158,9 +163,10 @@ export const useSendInfo = ({
         multisigAddress,
         dispatch,
         t,
+        multisigConfig,
       })
     }, 300)
-  }, [sendInfoList, setErrorMessage, multisigAddress, dispatch, t])
+  }, [sendInfoList, setErrorMessage, multisigAddress, dispatch, t, multisigConfig])
   return {
     sendInfoList,
     addSendInfo,

@@ -50,7 +50,7 @@ const SendFromMultisigDialog = ({
     onSendInfoChange,
     totalAmount,
     errorMessage,
-  } = useSendInfo({ isMainnet, balance, address: multisigConfig.fullPayload, t })
+  } = useSendInfo({ isMainnet, balance, address: multisigConfig.fullPayload, t, multisigConfig })
   const totalAmountErrorMessage = useMemo(() => {
     let errorMessageUnderTotal = errorMessage
     try {

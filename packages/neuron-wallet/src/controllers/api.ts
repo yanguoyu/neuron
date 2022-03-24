@@ -288,7 +288,7 @@ export default class ApiController {
       return this.#walletsController.generateSendingAllTx(params)
     })
 
-    handle('generate-multisig-tx', async (_, params: { items: { address: string, capacity: string }[], multisigAddress: string }) => {
+    handle('generate-multisig-tx', async (_, params) => {
       return this.#walletsController.generateMultisigTx(params)
     })
 

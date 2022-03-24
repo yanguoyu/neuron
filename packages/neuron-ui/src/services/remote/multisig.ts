@@ -37,4 +37,5 @@ export const getMultisigBalances = remoteApi<
 export const generateMultisigTx = remoteApi<{
   items: { address: string; capacity: string }[]
   multisigAddress: string
+  multisigConfig: MultisigConfig
 }>('generate-multisig-tx')
