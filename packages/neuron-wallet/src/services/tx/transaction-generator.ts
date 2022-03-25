@@ -23,7 +23,6 @@ import assert from 'assert'
 import AssetAccount from 'models/asset-account'
 import AddressService from 'services/addresses'
 import { addressToScript } from '@nervosnetwork/ckb-sdk-utils'
-import MultisigConfigModel from 'models/multisig-config'
 
 export interface TargetOutput {
   address: string
@@ -143,8 +142,7 @@ export class TransactionGenerator {
       lockArgs?: string
       codeHash: string
       hashType: ScriptHashType
-    } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type },
-    multisigConfig?: MultisigConfigModel
+    } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type }
   ): Promise<Transaction> => {
     const secpCellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
     const tipHeader = await TransactionGenerator.getTipHeader()
@@ -186,8 +184,7 @@ export class TransactionGenerator {
       inputs: [],
       outputs,
       outputsData: outputs.map(output => output.data || '0x'),
-      witnesses: [],
-      multisigConfig
+      witnesses: []
     })
 
     const baseSize: number = TransactionSize.tx(tx)

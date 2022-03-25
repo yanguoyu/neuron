@@ -29,7 +29,6 @@ import AddressParser from 'models/address-parser'
 import HardwareWalletService from './hardware'
 import { CapacityNotEnoughForChange, CapacityNotEnoughForChangeByTransfer, SignTransactionFailed } from 'exceptions'
 import AssetAccountInfo from 'models/asset-account-info'
-import MultisigConfigModel from 'models/multisig-config'
 
 interface SignInfo {
   witnessArgs: WitnessArgs
@@ -297,30 +296,19 @@ export default class TransactionSender {
     return tx
   }
 
-  public async generateMultisigTx(
-    items: TargetOutput[] = [],
-    multisigConfig: MultisigConfigModel
-  ): Promise<Transaction> {
+  public async generateMultisigTx(items: TargetOutput[] = [], multisigAddress: string): Promise<Transaction> {
     const targetOutputs = items.map(item => ({
       ...item,
       capacity: BigInt(item.capacity).toString()
     }))
 
     try {
-      const lockScript = addressToScript(multisigConfig.fullPayload)
-      const tx: Transaction = await TransactionGenerator.generateTx(
-        '',
-        targetOutputs,
-        multisigConfig.fullPayload,
-        '0',
-        '0',
-        {
-          lockArgs: lockScript.args,
-          codeHash: SystemScriptInfo.MULTI_SIGN_CODE_HASH,
-          hashType: SystemScriptInfo.MULTI_SIGN_HASH_TYPE
-        },
-        multisigConfig
-      )
+      const lockScript = addressToScript(multisigAddress)
+      const tx: Transaction = await TransactionGenerator.generateTx('', targetOutputs, multisigAddress, '0', '0', {
+        lockArgs: lockScript.args,
+        codeHash: SystemScriptInfo.MULTI_SIGN_CODE_HASH,
+        hashType: SystemScriptInfo.MULTI_SIGN_HASH_TYPE
+      })
       return tx
     } catch (error) {
       if (error instanceof CapacityNotEnoughForChange) {

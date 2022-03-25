@@ -7,7 +7,6 @@ import { serializeWitnessArgs, rawTransactionToHash } from '@nervosnetwork/ckb-s
 import BlockHeader from './block-header'
 import TypeCheckerUtils from 'utils/type-checker'
 import OutPoint from './out-point'
-import MultisigConfigModel from 'models/multisig-config'
 
 export enum TransactionStatus {
   Pending = 'pending',
@@ -71,8 +70,6 @@ export default class Transaction {
 
   public nftInfo?: NFTInfo
 
-  public multisigConfig?: MultisigConfigModel
-
   constructor(
     version: string,
     cellDeps: CellDep[] = [],
@@ -95,8 +92,7 @@ export default class Transaction {
     createdAt?: string,
     updatedAt?: string,
     sudtInfo?: SudtInfo,
-    nftType?: NFTInfo,
-    multisigConfig?: MultisigConfigModel
+    nftType?: NFTInfo
   ) {
     this.cellDeps = cellDeps
     this.headerDeps = headerDeps
@@ -132,7 +128,6 @@ export default class Transaction {
       this.createdAt,
       this.updatedAt
     )
-    this.multisigConfig = multisigConfig
   }
 
   public static fromObject({
@@ -157,8 +152,7 @@ export default class Transaction {
     createdAt,
     updatedAt,
     sudtInfo,
-    nftInfo,
-    multisigConfig
+    nftInfo
   }: {
     version: string
     cellDeps?: CellDep[]
@@ -182,7 +176,6 @@ export default class Transaction {
     updatedAt?: string
     sudtInfo?: SudtInfo
     nftInfo?: NFTInfo
-    multisigConfig?: MultisigConfigModel
   }): Transaction {
     return new Transaction(
       version,
@@ -211,8 +204,7 @@ export default class Transaction {
       createdAt,
       updatedAt,
       sudtInfo,
-      nftInfo,
-      multisigConfig
+      nftInfo
     )
   }
 
