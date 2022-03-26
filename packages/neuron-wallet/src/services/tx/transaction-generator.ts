@@ -15,6 +15,7 @@ import MultiSign from 'models/multi-sign'
 import RpcService from 'services/rpc-service'
 import NodeService from 'services/node'
 import BlockHeader from 'models/chain/block-header'
+import CellDep from 'models/chain/cell-dep'
 import SystemScriptInfo from 'models/system-script-info'
 import ArrayUtils from 'utils/array'
 import AssetAccountInfo from 'models/asset-account-info'
@@ -142,9 +143,19 @@ export class TransactionGenerator {
       lockArgs?: string
       codeHash: string
       hashType: ScriptHashType
-    } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type }
+    } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type },
+    multisigConfig: {
+      r: number
+      m: number
+      n: number
+    } = { r: 0, m: 1, n: 1 }
   ): Promise<Transaction> => {
-    const secpCellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    let cellDep: CellDep
+    if (lockClass.codeHash === SystemScriptInfo.MULTI_SIGN_CODE_HASH) {
+      cellDep = await SystemScriptInfo.getInstance().getMultiSignCellDep()
+    } else {
+      cellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    }
     const tipHeader = await TransactionGenerator.getTipHeader()
     const tipHeaderEpoch = tipHeader.epoch
     const tipHeaderTimestamp = tipHeader.timestamp
@@ -179,7 +190,7 @@ export class TransactionGenerator {
 
     const tx = Transaction.fromObject({
       version: '0',
-      cellDeps: [secpCellDep],
+      cellDeps: [cellDep],
       headerDeps: [],
       inputs: [],
       outputs,
@@ -197,7 +208,8 @@ export class TransactionGenerator {
       TransactionGenerator.CHANGE_OUTPUT_SIZE,
       TransactionGenerator.CHANGE_OUTPUT_DATA_SIZE,
       undefined,
-      lockClass
+      lockClass,
+      multisigConfig
     )
     const finalFeeInt = BigInt(finalFee)
     tx.inputs = inputs

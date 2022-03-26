@@ -40,17 +40,14 @@ const SendFromMultisigDialog = ({
   const isMainnet = isMainnetUtil(networks, networkID)
   const {
     sendInfoList,
-    isSendMax,
     outputErrors,
     isAddOneBtnDisabled,
-    isMaxBtnDisabled,
     addSendInfo,
     deleteSendInfo,
-    onSendMaxClick,
     onSendInfoChange,
     totalAmount,
     errorMessage,
-  } = useSendInfo({ isMainnet, balance, address: multisigConfig.fullPayload, t })
+  } = useSendInfo({ isMainnet, balance, multisigConfig, t })
   const totalAmountErrorMessage = useMemo(() => {
     let errorMessageUnderTotal = errorMessage
     try {
@@ -67,7 +64,7 @@ const SendFromMultisigDialog = ({
       !!totalAmountErrorMessage,
     [outputErrors, sendInfoList, totalAmountErrorMessage]
   )
-  const onSumbit = useOnSumbit({ outputs: sendInfoList, isMainnet, multisigReadySend: multisigConfig.m === 1 })
+  const onSumbit = useOnSumbit({ outputs: sendInfoList, isMainnet, multisigConfig })
   return (
     <>
       <div className={styles.sendCKBTitle}>
@@ -85,22 +82,21 @@ const SendFromMultisigDialog = ({
           </CopyZone>
         </div>
         <div className={styles.sendFieldContainer}>
-          {sendInfoList.map(({ address, amount }, idx) => (
+          {sendInfoList.map((item, idx) => (
             <SendFieldset
-              key={address || idx}
+              key={item.address || idx}
               idx={idx}
-              item={{ address, amount, disabled: idx === sendInfoList.length - 1 && isSendMax }}
+              item={item}
               errors={outputErrors[idx]}
-              isSendMax={isSendMax}
+              isSendMax={false}
               isAddBtnShow={idx === sendInfoList.length - 1}
               isAddOneBtnDisabled={isAddOneBtnDisabled}
-              isMaxBtnDisabled={isMaxBtnDisabled}
+              isMaxBtnDisabled
               isTimeLockable={false}
-              isMaxBtnShow={idx === sendInfoList.length - 1}
+              isMaxBtnShow={false}
               isRemoveBtnShow={sendInfoList.length > 1}
               onOutputAdd={addSendInfo}
               onOutputRemove={deleteSendInfo}
-              onSendMaxClick={onSendMaxClick}
               onItemChange={onSendInfoChange}
             />
           ))}
@@ -120,7 +116,6 @@ const SendFromMultisigDialog = ({
           label={t('multisig-address.send-ckb.send')}
           type="primary"
           onClick={onSumbit}
-          data-status="ready"
           data-wallet-id={wallet.id}
         />
       </div>

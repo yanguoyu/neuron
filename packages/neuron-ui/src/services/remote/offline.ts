@@ -38,7 +38,7 @@ export interface OfflineSignJSON {
   signatures?: Signatures
 }
 
-export type SignProps = OfflineSignJSON & { walletID: string; password: string }
+export type SignProps = OfflineSignJSON & { walletID: string; password: string; multisigConfig: MultisigConfigs }
 
 export type BroadcastProps = OfflineSignJSON & { walletID: string }
 

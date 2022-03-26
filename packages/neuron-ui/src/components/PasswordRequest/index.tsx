@@ -28,7 +28,7 @@ const PasswordRequest = () => {
     app: {
       send: { description, generatedTx },
       loadings: { sending: isSending = false },
-      passwordRequest: { walletID = '', actionType = null, multisigReadySend },
+      passwordRequest: { walletID = '', actionType = null, multisigConfig },
     },
     settings: { wallets = [] },
     experimental,
@@ -66,14 +66,14 @@ const PasswordRequest = () => {
       case 'send':
         return OfflineSignType.Regular
       case 'send-from-multisig':
-        if (multisigReadySend) {
+        if (multisigConfig.m === 1) {
           return OfflineSignType.Regular
         }
         return OfflineSignType.SendFromMultisigOnlySig
       default:
         return OfflineSignType.Invalid
     }
-  }, [actionType, multisigReadySend])
+  }, [actionType, multisigConfig])
 
   const exportTransaction = useCallback(async () => {
     onDismiss()
@@ -119,6 +119,13 @@ const PasswordRequest = () => {
           throw new PasswordIncorrectException()
         }
       }
+      const handleSendMultiTxRes = ({ status }: { status: number }) => {
+        if (isSuccessResponse({ status })) {
+          window.location.reload()
+        } else if (status === ErrorCode.PasswordIncorrect) {
+          throw new PasswordIncorrectException()
+        }
+      }
       try {
         switch (actionType) {
           case 'send': {
@@ -126,6 +133,15 @@ const PasswordRequest = () => {
               break
             }
             await sendTransaction({ walletID, tx: generatedTx, description, password })(dispatch).then(handleSendTxRes)
+            break
+          }
+          case 'send-from-multisig': {
+            if (isSending) {
+              break
+            }
+            await sendTransaction({ walletID, tx: generatedTx, description, password, multisigConfig })(dispatch).then(
+              handleSendMultiTxRes
+            )
             break
           }
           case 'delete': {
@@ -257,6 +273,7 @@ const PasswordRequest = () => {
       experimental,
       setError,
       t,
+      multisigConfig,
     ]
   )
 
@@ -287,6 +304,7 @@ const PasswordRequest = () => {
       ...json,
       walletID,
       password,
+      multisigConfig,
     })
     if (!isSuccessResponse(res)) {
       dispatch({
@@ -305,7 +323,7 @@ const PasswordRequest = () => {
       payload: { sending: false },
     })
     onDismiss()
-  }, [description, dispatch, experimental, generatedTx, onDismiss, password, signType, t, walletID])
+  }, [description, dispatch, experimental, generatedTx, onDismiss, password, signType, t, walletID, multisigConfig])
 
   const dropdownList = [
     {

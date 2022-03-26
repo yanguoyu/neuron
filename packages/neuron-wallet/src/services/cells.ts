@@ -432,7 +432,12 @@ export default class CellsService {
       lockArgs?: string | string[]
       codeHash: string
       hashType: ScriptHashType
-    } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type }
+    } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type },
+    multisigConfig: {
+      r: number
+      m: number
+      n: number
+    } = { r: 0, m: 1, n: 1 }
   ): Promise<{
     inputs: Input[]
     capacities: string
@@ -525,7 +530,11 @@ export default class CellsService {
       if (inputs.find(el => el.lockHash === cell.lockHash!)) {
         totalSize += TransactionSize.emptyWitness()
       } else {
-        totalSize += TransactionSize.secpLockWitness()
+        if (lockClass.codeHash === SystemScriptInfo.MULTI_SIGN_CODE_HASH) {
+          totalSize += TransactionSize.multiSignWitness(multisigConfig.r, multisigConfig.m, multisigConfig.n)
+        } else {
+          totalSize += TransactionSize.secpLockWitness()
+        }
       }
       inputs.push(input)
       inputCapacities += BigInt(cell.capacity)

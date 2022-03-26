@@ -2,20 +2,20 @@ import { useCallback, useState, useMemo, useEffect } from 'react'
 import { useOutputErrors, outputsToTotalAmount, CapacityUnit, validateOutputs, CKBToShannonFormatter } from 'utils'
 import { useDispatch } from 'states'
 import { AppActions, StateDispatch } from 'states/stateProvider/reducer'
-import { generateMultisigTx } from 'services/remote'
+import { generateMultisigTx, MultisigConfig } from 'services/remote'
 import { TFunction } from 'i18next'
 
 let generateTxTimer: ReturnType<typeof setTimeout>
 
 const generateMultisigTxWith = ({
   sendInfoList,
-  multisigAddress,
+  multisigConfig,
   dispatch,
   setErrorMessage,
   t,
 }: {
   sendInfoList: { address: string | undefined; amount: string | undefined; unit: CapacityUnit }[]
-  multisigAddress: string
+  multisigConfig: MultisigConfig
   dispatch: StateDispatch
   setErrorMessage: React.Dispatch<React.SetStateAction<string>>
   t: TFunction
@@ -26,7 +26,7 @@ const generateMultisigTxWith = ({
         address: item.address || '',
         capacity: CKBToShannonFormatter(item.amount, item.unit),
       })),
-      multisigAddress,
+      multisigConfig,
     }
     generateMultisigTx(realParams)
       .then((res: any) => {
@@ -60,22 +60,20 @@ const generateMultisigTxWith = ({
 export const useSendInfo = ({
   isMainnet,
   balance,
-  address: multisigAddress,
+  multisigConfig,
   t,
 }: {
   isMainnet: boolean
   balance: string
-  address: string
+  multisigConfig: MultisigConfig
   t: TFunction
 }) => {
   const [sendInfoList, setSendInfoList] = useState<
     { address: string | undefined; amount: string | undefined; unit: CapacityUnit }[]
   >([{ address: undefined, amount: undefined, unit: CapacityUnit.CKB }])
-  const [isSendMax, setIsSendMax] = useState(false)
   const addSendInfo = useCallback(() => {
     setSendInfoList(v => [...v, { address: undefined, amount: undefined, unit: CapacityUnit.CKB }])
-    setIsSendMax(false)
-  }, [setSendInfoList, setIsSendMax])
+  }, [setSendInfoList])
   const deleteSendInfo = useCallback(
     e => {
       const {
@@ -104,26 +102,6 @@ export const useSendInfo = ({
       return copy
     })
   }, [])
-  const onSendMaxClick = useCallback(
-    e => {
-      const {
-        dataset: { isOn = 'false' },
-      } = e.currentTarget
-      const sendMaxOnClick = isOn === 'false'
-      setIsSendMax(sendMaxOnClick)
-      setSendInfoList(originalValue => {
-        const copy = [...originalValue]
-        if (sendMaxOnClick) {
-          const totalUsedAmount = outputsToTotalAmount(copy.slice(0, copy.length - 1).filter(v => !!v.amount))
-          copy[copy.length - 1].amount = ((BigInt(balance) - BigInt(totalUsedAmount)) / BigInt(1e8)).toString()
-        } else {
-          copy[copy.length - 1].amount = '0'
-        }
-        return copy
-      })
-    },
-    [setIsSendMax, balance]
-  )
   const outputErrors = useOutputErrors(sendInfoList, isMainnet)
   const totalAmount = useMemo(() => outputsToTotalAmount(sendInfoList.filter(v => !!v.amount)), [sendInfoList])
   const isAddOneBtnDisabled = useMemo(() => {
@@ -133,14 +111,6 @@ export const useSendInfo = ({
       BigInt(totalAmount) >= BigInt(balance)
     )
   }, [outputErrors, sendInfoList, balance, totalAmount])
-  const isMaxBtnDisabled = useMemo(() => {
-    try {
-      validateOutputs(sendInfoList, isMainnet, true)
-    } catch {
-      return true
-    }
-    return false
-  }, [sendInfoList, isMainnet])
   const dispatch = useDispatch()
   const [errorMessage, setErrorMessage] = useState('')
   useEffect(() => {
@@ -155,22 +125,19 @@ export const useSendInfo = ({
       generateMultisigTxWith({
         sendInfoList: validSendInfoList,
         setErrorMessage,
-        multisigAddress,
+        multisigConfig,
         dispatch,
         t,
       })
     }, 300)
-  }, [sendInfoList, setErrorMessage, multisigAddress, dispatch, t])
+  }, [sendInfoList, setErrorMessage, multisigConfig, dispatch, t])
   return {
     sendInfoList,
     addSendInfo,
     deleteSendInfo,
     onSendInfoChange,
-    isSendMax,
-    onSendMaxClick,
     isAddOneBtnDisabled,
     outputErrors,
-    isMaxBtnDisabled,
     totalAmount,
     errorMessage,
   }
@@ -179,22 +146,19 @@ export const useSendInfo = ({
 export const useOnSumbit = ({
   outputs,
   isMainnet,
-  multisigReadySend,
+  multisigConfig,
 }: {
   outputs: { address: string | undefined; amount: string | undefined; unit: CapacityUnit }[]
   isMainnet: boolean
-  multisigReadySend: boolean
+  multisigConfig: MultisigConfig
 }) => {
   const dispatch = useDispatch()
   return useCallback(
     (e: React.FormEvent) => {
       const {
-        dataset: { walletId, status },
+        dataset: { walletId },
       } = e.target as HTMLFormElement
       e.preventDefault()
-      if (status !== 'ready') {
-        return
-      }
       try {
         validateOutputs(outputs, isMainnet)
         dispatch({
@@ -202,13 +166,13 @@ export const useOnSumbit = ({
           payload: {
             walletID: walletId as string,
             actionType: 'send-from-multisig',
-            multisigReadySend,
+            multisigConfig,
           },
         })
       } catch {
         // ignore
       }
     },
-    [dispatch, outputs, isMainnet, multisigReadySend]
+    [dispatch, outputs, isMainnet, multisigConfig]
   )
 }

@@ -30,6 +30,7 @@ import { set as setDescription } from 'services/tx/transaction-description'
 import HardwareWalletService from 'services/hardware'
 import { DeviceInfo, ExtendedPublicKey } from 'services/hardware/common'
 import AddressParser from 'models/address-parser'
+import MultisigConfigModel from 'models/multisig-config'
 
 export default class WalletsController {
   public async getAll(): Promise<Controller.Response<Pick<Wallet, 'id' | 'name' | 'device'>[]>> {
@@ -389,20 +390,37 @@ export default class WalletsController {
   }
 
   public async sendTx(
-    params: { walletID: string; tx: Transaction; password: string; description?: string },
+    params: {
+      walletID: string
+      tx: Transaction
+      password: string
+      description?: string
+      multisigConfig?: MultisigConfigModel
+    },
     skipSign = false
   ) {
     if (!params) {
       throw new IsRequired('Parameters')
     }
 
-    const hash = await new TransactionSender().sendTx(
-      params.walletID,
-      Transaction.fromObject(params.tx),
-      params.password,
-      0,
-      skipSign
-    )
+    let hash: string
+    if (params.multisigConfig) {
+      hash = await new TransactionSender().sendMultisigTx(
+        params.walletID,
+        Transaction.fromObject(params.tx),
+        params.password,
+        params.multisigConfig,
+        skipSign
+      )
+    } else {
+      hash = await new TransactionSender().sendTx(
+        params.walletID,
+        Transaction.fromObject(params.tx),
+        params.password,
+        0,
+        skipSign
+      )
+    }
     const description = params.description || params.tx.description || ''
     if (description !== '') {
       await setDescription(params.walletID, hash, description)
@@ -462,14 +480,17 @@ export default class WalletsController {
     }
   }
 
-  public async generateMultisigTx(params: { items: { address: string; capacity: string }[]; multisigAddress: string }) {
+  public async generateMultisigTx(params: {
+    items: { address: string; capacity: string }[]
+    multisigConfig: MultisigConfigModel
+  }) {
     if (!params) {
       throw new IsRequired('Parameters')
     }
     const addresses: string[] = params.items.map(i => i.address)
     this.checkAddresses(addresses)
 
-    const tx: Transaction = await new TransactionSender().generateMultisigTx(params.items, params.multisigAddress)
+    const tx: Transaction = await new TransactionSender().generateMultisigTx(params.items, params.multisigConfig)
     return {
       status: ResponseCode.Success,
       result: tx

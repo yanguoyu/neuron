@@ -40,6 +40,7 @@ import OfflineSignController from './offline-sign'
 import SUDTController from "controllers/sudt";
 import SyncedBlockNumber from 'models/synced-block-number'
 import IndexerService from 'services/indexer'
+import MultisigConfigModel from 'models/multisig-config'
 
 export type Command = 'export-xpubkey' | 'import-xpubkey' | 'delete-wallet' | 'backup-wallet' | 'migrate-acp'
 // Handle channel messages from renderer process and user actions.
@@ -288,8 +289,19 @@ export default class ApiController {
       return this.#walletsController.generateSendingAllTx(params)
     })
 
-    handle('generate-multisig-tx', async (_, params: { items: { address: string, capacity: string }[], multisigAddress: string }) => {
-      return this.#walletsController.generateMultisigTx(params)
+    handle('generate-multisig-tx', async (_, params: { items: { address: string, capacity: string }[], multisigConfig: {
+      walletId: string
+      r: number
+      m: number
+      n: number
+      addresses: string[]
+      alias: string
+      fullPayload: string
+    } }) => {
+      return this.#walletsController.generateMultisigTx({
+        items: params.items,
+        multisigConfig: MultisigConfigModel.fromObject(params.multisigConfig)
+      })
     })
 
     handle('generate-mnemonic', async () => {

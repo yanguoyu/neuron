@@ -23,7 +23,7 @@ import styles from './sendFieldset.module.scss'
 
 interface SendSubformProps {
   idx: number
-  item: Readonly<{ disabled: boolean; date?: string | undefined } & Record<'address' | 'amount', string | undefined>>
+  item: Readonly<{ disabled?: boolean; date?: string | undefined } & Record<'address' | 'amount', string | undefined>>
   errors: Partial<Record<'addrError' | 'amountError', Error & { i18n: Record<string, string> }>>
   isSendMax: boolean
   isMaxBtnDisabled: boolean
@@ -36,7 +36,7 @@ interface SendSubformProps {
   onOutputRemove: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
   onLocktimeClick?: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
   onScan?: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
-  onSendMaxClick: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
+  onSendMaxClick?: React.EventHandler<React.SyntheticEvent<HTMLButtonElement>>
   onItemChange: React.EventHandler<React.SyntheticEvent<HTMLInputElement>>
 }
 
