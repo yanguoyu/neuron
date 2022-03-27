@@ -1,6 +1,11 @@
 import { getConnection, In } from 'typeorm'
 import { addressToScript, scriptToAddress, scriptToHash } from '@nervosnetwork/ckb-sdk-utils'
-import { CapacityNotEnough, CapacityNotEnoughForChange, LiveCapacityNotEnough } from 'exceptions'
+import {
+  CapacityNotEnough,
+  CapacityNotEnoughForChange,
+  LiveCapacityNotEnough,
+  MultisigConfigNeedError
+} from 'exceptions'
 import FeeMode from 'models/fee-mode'
 import OutputEntity from 'database/chain/entities/output'
 import InputEntity from 'database/chain/entities/input'
@@ -21,6 +26,7 @@ import Script, { ScriptHashType } from 'models/chain/script'
 import LiveCellService from './live-cell-service'
 import AssetAccountInfo from 'models/asset-account-info'
 import NFT from 'models/nft'
+import MultisigConfigModel from 'models/multisig-config'
 
 export const MIN_CELL_CAPACITY = '6100000000'
 
@@ -433,11 +439,7 @@ export default class CellsService {
       codeHash: string
       hashType: ScriptHashType
     } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type },
-    multisigConfig: {
-      r: number
-      m: number
-      n: number
-    } = { r: 0, m: 1, n: 1 }
+    multisigConfigs: MultisigConfigModel[] = []
   ): Promise<{
     inputs: Input[]
     capacities: string
@@ -525,12 +527,23 @@ export default class CellsService {
       totalSize += TransactionSize.witness(append.witness)
     }
     let hasChangeOutput: boolean = false
+    const multisigConfigMap: Record<string, MultisigConfigModel> = multisigConfigs.reduce(
+      (pre, cur) => ({
+        ...pre,
+        [cur.getLockHash()]: cur
+      }),
+      {}
+    )
     liveCells.every(cell => {
       const input: Input = new Input(cell.outPoint(), '0', cell.capacity, cell.lockScript(), cell.lockHash)
       if (inputs.find(el => el.lockHash === cell.lockHash!)) {
         totalSize += TransactionSize.emptyWitness()
       } else {
         if (lockClass.codeHash === SystemScriptInfo.MULTI_SIGN_CODE_HASH) {
+          const multisigConfig = multisigConfigMap[cell.lockHash]
+          if (!multisigConfig) {
+            throw new MultisigConfigNeedError()
+          }
           totalSize += TransactionSize.multiSignWitness(multisigConfig.r, multisigConfig.m, multisigConfig.n)
         } else {
           totalSize += TransactionSize.secpLockWitness()

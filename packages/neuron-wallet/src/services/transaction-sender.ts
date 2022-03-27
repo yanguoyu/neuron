@@ -65,12 +65,12 @@ export default class TransactionSender {
     walletID: string = '',
     transaction: Transaction,
     password: string = '',
-    multisigConfig: MultisigConfigModel,
+    multisigConfigs: MultisigConfigModel[],
     skipSign = false
   ) {
     const tx = skipSign
       ? Transaction.fromObject(transaction)
-      : await this.signAGroupMultisig(walletID, transaction, password, multisigConfig, [])
+      : await this.signMultisig(walletID, transaction, password, multisigConfigs, [])
 
     return this.broadcastTx(walletID, tx)
   }
@@ -224,11 +224,11 @@ export default class TransactionSender {
     return tx
   }
 
-  public async signAGroupMultisig(
+  public async signMultisig(
     walletID: string = '',
     transaction: Transaction,
     password: string = '',
-    multisigConfig: MultisigConfigModel,
+    multisigConfigs: MultisigConfigModel[],
     signedBlake160s: string[],
     context?: RPC.RawTransaction[]
   ) {
@@ -293,15 +293,20 @@ export default class TransactionSender {
     })
 
     const lockHashes = new Set(witnessSigningEntries.map(w => w.lockHash))
-    if (lockHashes.size !== 1) {
-      throw new Error('only one lockhash in a group input')
-    }
+    const multisigConfigMap: Record<string, MultisigConfigModel> = multisigConfigs.reduce(
+      (pre, cur) => ({
+        ...pre,
+        [cur.getLockHash()]: cur
+      }),
+      {}
+    )
+    for (const lockHash of lockHashes) {
+      const multisigConfig = multisigConfigMap[lockHash]
+      const multisigArgses = multisigConfig.addresses.map(v => addressToScript(v).args)
+      const privateKey = findPrivateKey(multisigArgses)
 
-    const multisigArgses = multisigConfig.addresses.map(v => addressToScript(v).args)
-    const privateKey = findPrivateKey(multisigArgses)
-
-    const serializedWitnesses: (WitnessArgs | string)[] = witnessSigningEntries.map(
-      (value: SignInfo, index: number) => {
+      const witnessesArgs = witnessSigningEntries.filter(w => w.lockHash === lockHash)
+      const serializedWitnesses: (WitnessArgs | string)[] = witnessesArgs.map((value: SignInfo, index: number) => {
         const args = value.witnessArgs
         if (index === 0) {
           return args
@@ -310,35 +315,34 @@ export default class TransactionSender {
           return '0x'
         }
         return serializeWitnessArgs(args.toSDK())
+      })
+      let signed: (string | CKBComponents.WitnessArgs | WitnessArgs)[] = []
+      const serializedMultiSign: string = new MultiSign().serialize(multisigArgses, {
+        M: HexUtils.toHex(multisigConfig.m, 2),
+        N: HexUtils.toHex(multisigConfig.n, 2),
+        R: HexUtils.toHex(multisigConfig.r, 2),
+        S: MultiSign.defaultS
+      })
+      signed = await TransactionSender.signSingleMultiSignScript(
+        privateKey,
+        serializedWitnesses,
+        txHash,
+        serializedMultiSign,
+        wallet,
+        multisigConfig.m
+      )
+      const wit = signed[0] as WitnessArgs
+      if (!witnessesArgs[0].witnessArgs.lock) {
+        wit.lock = serializedMultiSign + wit.lock!.slice(2)
+      } else {
+        wit.lock += wit.lock!.slice(2)
       }
-    )
-    let signed: (string | CKBComponents.WitnessArgs | WitnessArgs)[] = []
-    const serializedMultiSign: string = new MultiSign().serialize(multisigArgses, {
-      M: HexUtils.toHex(multisigConfig.m, 2),
-      N: HexUtils.toHex(multisigConfig.n, 2),
-      R: HexUtils.toHex(multisigConfig.r, 2),
-      S: MultiSign.defaultS
-    })
-    signed = await TransactionSender.signSingleMultiSignScript(
-      privateKey,
-      serializedWitnesses,
-      txHash,
-      serializedMultiSign,
-      wallet,
-      multisigConfig.m
-    )
-    const wit = signed[0] as WitnessArgs
-    if (!witnessSigningEntries[0].witnessArgs.lock) {
-      wit.lock = serializedMultiSign + wit.lock!.slice(2)
-    } else {
-      wit.lock += wit.lock!.slice(2)
-    }
-    signed[0] = serializeWitnessArgs(wit.toSDK())
+      signed[0] = serializeWitnessArgs(wit.toSDK())
 
-    for (let i = 0; i < witnessSigningEntries.length; ++i) {
-      witnessSigningEntries[i].witness = signed[i] as string
+      for (let i = 0; i < witnessesArgs.length; ++i) {
+        witnessesArgs[i].witness = signed[i] as string
+      }
     }
-
     tx.witnesses = witnessSigningEntries.map(w => w.witness)
     tx.hash = txHash
 
@@ -449,7 +453,7 @@ export default class TransactionSender {
         '',
         targetOutputs,
         multisigConfig.fullPayload,
-        '',
+        '0',
         '1000',
         {
           lockArgs: lockScript.args,

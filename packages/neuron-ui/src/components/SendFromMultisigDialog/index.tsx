@@ -5,7 +5,7 @@ import Button from 'widgets/Button'
 import CopyZone from 'widgets/CopyZone'
 import TextField from 'widgets/TextField'
 import SendFieldset from 'components/SendFieldset'
-import { isMainnet as isMainnetUtil, shannonToCKBFormatter, validateTotalAmount } from 'utils'
+import { calculateFee, isMainnet as isMainnetUtil, shannonToCKBFormatter, validateTotalAmount } from 'utils'
 import { useState as useGlobalState } from 'states'
 
 import { useSendInfo, useOnSumbit } from './hooks'
@@ -33,6 +33,9 @@ const SendFromMultisigDialog = ({
 }) => {
   const [t] = useTranslation()
   const {
+    app: {
+      send: { generatedTx },
+    },
     chain: { networkID },
     settings: { networks = [] },
     wallet,
@@ -48,15 +51,16 @@ const SendFromMultisigDialog = ({
     totalAmount,
     errorMessage,
   } = useSendInfo({ isMainnet, balance, multisigConfig, t })
+  const fee = useMemo(() => calculateFee(generatedTx), [generatedTx])
   const totalAmountErrorMessage = useMemo(() => {
     let errorMessageUnderTotal = errorMessage
     try {
-      validateTotalAmount(totalAmount, '0', balance)
+      validateTotalAmount(totalAmount, fee, balance)
     } catch (err) {
       errorMessageUnderTotal = t(err.message)
     }
     return errorMessageUnderTotal
-  }, [errorMessage, totalAmount, balance, t])
+  }, [errorMessage, totalAmount, balance, t, fee])
   const isSendDisabled = useMemo(
     () =>
       outputErrors.some(v => v.addrError || v.amountError) ||
@@ -108,6 +112,7 @@ const SendFromMultisigDialog = ({
           readOnly
           error={totalAmountErrorMessage}
         />
+        <TextField label={t('send.fee')} field="fee" value={`${shannonToCKBFormatter(fee)} CKB`} readOnly disabled />
       </div>
       <div className={styles.sendActions}>
         <Button label={t('multisig-address.send-ckb.cancel')} type="cancel" onClick={closeDialog} />

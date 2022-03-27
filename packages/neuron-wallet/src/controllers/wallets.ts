@@ -409,7 +409,7 @@ export default class WalletsController {
         params.walletID,
         Transaction.fromObject(params.tx),
         params.password,
-        params.multisigConfig,
+        [params.multisigConfig],
         skipSign
       )
     } else {

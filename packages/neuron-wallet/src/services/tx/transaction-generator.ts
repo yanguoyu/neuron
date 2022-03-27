@@ -24,6 +24,7 @@ import assert from 'assert'
 import AssetAccount from 'models/asset-account'
 import AddressService from 'services/addresses'
 import { addressToScript } from '@nervosnetwork/ckb-sdk-utils'
+import MultisigConfigModel from 'models/multisig-config'
 
 export interface TargetOutput {
   address: string
@@ -144,11 +145,7 @@ export class TransactionGenerator {
       codeHash: string
       hashType: ScriptHashType
     } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type },
-    multisigConfig: {
-      r: number
-      m: number
-      n: number
-    } = { r: 0, m: 1, n: 1 }
+    multisigConfig?: MultisigConfigModel
   ): Promise<Transaction> => {
     let cellDep: CellDep
     if (lockClass.codeHash === SystemScriptInfo.MULTI_SIGN_CODE_HASH) {
@@ -209,7 +206,7 @@ export class TransactionGenerator {
       TransactionGenerator.CHANGE_OUTPUT_DATA_SIZE,
       undefined,
       lockClass,
-      multisigConfig
+      multisigConfig ? [multisigConfig] : []
     )
     const finalFeeInt = BigInt(finalFee)
     tx.inputs = inputs

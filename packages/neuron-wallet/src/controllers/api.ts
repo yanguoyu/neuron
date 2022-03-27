@@ -277,8 +277,19 @@ export default class ApiController {
       this.#walletsController.requestPassword(walletID, action)
     })
 
-    handle('send-tx', async (_, params: { walletID: string, tx: Transaction, password: string, description?: string }) => {
-      return this.#walletsController.sendTx(params)
+    handle('send-tx', async (_, params: { walletID: string, tx: Transaction, password: string, description?: string, multisigConfig?: {
+      walletId: string
+      r: number
+      m: number
+      n: number
+      addresses: string[]
+      alias: string
+      fullPayload: string
+    }}) => {
+      return this.#walletsController.sendTx({
+        ...params,
+        multisigConfig: params.multisigConfig ? MultisigConfigModel.fromObject(params.multisigConfig) : undefined
+      })
     })
 
     handle('generate-tx', async (_, params: { walletID: string, items: { address: string, capacity: string }[], fee: string, feeRate: string }) => {
@@ -297,7 +308,7 @@ export default class ApiController {
       addresses: string[]
       alias: string
       fullPayload: string
-    } }) => {
+    }}) => {
       return this.#walletsController.generateMultisigTx({
         items: params.items,
         multisigConfig: MultisigConfigModel.fromObject(params.multisigConfig)
@@ -548,7 +559,10 @@ export default class ApiController {
     })
 
     handle('sign-and-export-transaction', async (_, params) => {
-      return this.#offlineSignController.signAndExportTransaction(params)
+      return this.#offlineSignController.signAndExportTransaction({
+        ...params,
+        multisigConfig: params?.multisigConfig ? MultisigConfigModel.fromObject(params?.multisigConfig) : undefined
+      })
     })
 
     // multi sign

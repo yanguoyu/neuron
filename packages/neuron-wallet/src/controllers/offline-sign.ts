@@ -80,11 +80,11 @@ export default class OfflineSignController {
     try {
       let tx: Transaction
       if (params.multisigConfig) {
-        tx = await new TransactionSender().signAGroupMultisig(
+        tx = await new TransactionSender().signMultisig(
           walletID,
           Transaction.fromObject(transaction),
           password,
-          params.multisigConfig,
+          [params.multisigConfig],
           params.signedBlake160s || [],
           context
         )

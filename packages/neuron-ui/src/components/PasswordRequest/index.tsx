@@ -323,7 +323,22 @@ const PasswordRequest = () => {
       payload: { sending: false },
     })
     onDismiss()
-  }, [description, dispatch, experimental, generatedTx, onDismiss, password, signType, t, walletID, multisigConfig])
+    if (actionType === 'send-from-multisig') {
+      window.location.reload()
+    }
+  }, [
+    description,
+    dispatch,
+    experimental,
+    generatedTx,
+    onDismiss,
+    password,
+    signType,
+    t,
+    walletID,
+    actionType,
+    multisigConfig,
+  ])
 
   const dropdownList = [
     {
