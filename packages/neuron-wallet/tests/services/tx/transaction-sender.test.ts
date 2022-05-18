@@ -171,7 +171,8 @@ const generateTxWithStatus = (
     Input.fromObject({
       previousOutput: new OutPoint('0x' + (parseInt(id) - 1).toString().repeat(64), '0'),
       since: '',
-      lock: fakeScript
+      lock: fakeScript,
+      lockHash: fakeScript.computeHash()
     })
   ]
   const outputs = [
@@ -441,7 +442,8 @@ describe('TransactionSender Test', () => {
           beforeEach(() => {
             const chequeLock = assetAccountInfo.generateChequeScript(receiverDefaultLock.computeHash(), '0'.repeat(40))
             tx.inputs[0].lock = chequeLock
-          })
+            tx.inputs[0].lockHash = chequeLock.computeHash()
+          });
           it('success', async () => {
             // @ts-ignore: Private method
             const ntx = await transactionSender.sign(fakeWallet.id, tx, '1234', false)
@@ -453,14 +455,20 @@ describe('TransactionSender Test', () => {
           beforeEach(() => {
             const chequeLock = assetAccountInfo.generateChequeScript('0'.repeat(40), '0'.repeat(40))
             tx.inputs[0].lock = chequeLock
+            tx.inputs[0].lockHash = chequeLock.computeHash()
+          });
+          it('throws no match address', async () => {
+            await expect(transactionSender.sign(fakeWallet.id, tx, '1234', false)).rejects.toThrow(new NoMatchAddressForSign())
           })
-          it('throws', async () => {
-            try {
-              // @ts-ignore: Private method
-              await transactionSender.sign(fakeWallet.id, tx, '1234')
-            } catch (error) {
-              expect(error.message).toBe('no private key found')
-            }
+          it('throws no match private key', async () => {
+            mockGAI.mockReturnValueOnce([{ ...addr, path: 'no match private key'}])
+            const chequeLock = assetAccountInfo.generateChequeScript(
+              SystemScriptInfo.generateSecpScript(addr.blake160).computeHash().slice(2),
+              '0'.repeat(40)
+            )
+            tx.inputs[0].lock = chequeLock
+            tx.inputs[0].lockHash = chequeLock.computeHash()
+            await expect(transactionSender.sign(fakeWallet.id, tx, '1234', false)).rejects.toThrow(new Error('no private key found'))
           })
         })
       })
@@ -502,13 +510,20 @@ describe('TransactionSender Test', () => {
           beforeEach(() => {
             const chequeLock = assetAccountInfo.generateChequeScript('0'.repeat(40), '0'.repeat(40))
             tx.inputs[0].lock = chequeLock
+            tx.inputs[0].lockHash = chequeLock.computeHash()
+          });
+          it('throws no match address', async () => {
+            await expect(transactionSender.sign(fakeWallet.id, tx, '1234', false)).rejects.toThrow(new NoMatchAddressForSign())
           })
-          it('throws', async () => {
-            try {
-              await transactionSender.sign(fakeWallet.id, tx, '1234')
-            } catch (error) {
-              expect(error.message).toBe('no private key found')
-            }
+          it('throws no match private key', async () => {
+            mockGAI.mockReturnValueOnce([{ ...addr, path: 'no match private key'}])
+            const chequeLock = assetAccountInfo.generateChequeScript(
+              SystemScriptInfo.generateSecpScript(addr.blake160).computeHash().slice(2),
+              '0'.repeat(40)
+            )
+            tx.inputs[0].lock = chequeLock
+            tx.inputs[0].lockHash = chequeLock.computeHash()
+            await expect(transactionSender.sign(fakeWallet.id, tx, '1234', false)).rejects.toThrow(new Error('no private key found'))
           })
         })
       })
@@ -517,8 +532,8 @@ describe('TransactionSender Test', () => {
     describe('#sendTx', () => {
       let txHash: any
       beforeEach(async () => {
-        txHash = await transactionSender.sendTx(fakeWallet.id, fakeTx1.transaction)
-      })
+        txHash = await transactionSender.sendTx(fakeWallet.id, fakeTx1.transaction, '',  false)
+      });
       it('posts tx to rpc', () => {
         expect(stubbedSendTransaction).toHaveBeenCalled()
       })
@@ -983,6 +998,68 @@ describe('TransactionSender Test', () => {
           expect(res.witnesses[0]).toBe(expectedValue)
         })
       })
+    })
+  })
+
+  describe('findPrivateKey', () => {
+    const addressInfo = {
+      blake160: fakeScript.args,
+      path: `m/44'/309'/0'/0/0`
+    }
+    it('exception NoMatchAddressForSign', () => {
+      //@ts-ignore private-method
+      expect(() => transactionSender.findPrivateKey([], [])).toThrow(new NoMatchAddressForSign())
+    })
+
+    it('exception no private key found', () => {
+      //@ts-ignore private-method
+      expect(() => transactionSender.findPrivateKey([addressInfo.blake160], [addressInfo], [])).toThrow(new Error('no private key found'))
+    })
+
+    it('hard wallet success', () => {
+      //@ts-ignore private-method
+      const res = transactionSender.findPrivateKey([addressInfo.blake160], [addressInfo])
+      expect(res).toEqual([addressInfo.path, addressInfo.blake160])
+    })
+
+    it('hd wallet success', () => {
+      const pathAndPrivateKey = {
+        path: addressInfo.path,
+        privateKey: 'privateKey'
+      }
+      //@ts-ignore private-method
+      const res = transactionSender.findPrivateKey([addressInfo.blake160], [addressInfo], [pathAndPrivateKey])
+      expect(res).toEqual([pathAndPrivateKey.privateKey, addressInfo.blake160])
+    })
+  })
+
+  describe('getWitnessForSign', () => {
+    const emptyWit = {
+      lock: undefined,
+      inputType: undefined,
+      outputType: undefined
+    }
+    it('if witness is empty', () => {
+      // @ts-ignore
+      const res = transactionSender.getWitnessForSign([{ lockHash: '1' }], [])
+      expect(res).toEqual([emptyWit])
+    })
+
+    it('has group cell', () => {
+      // @ts-ignore
+      const res = transactionSender.getWitnessForSign([{ lockHash: '1' }, { lockHash: '1'}], [])
+      expect(res).toEqual([emptyWit, '0x'])
+    })
+
+    it('has witness', () => {
+      const existWit = {
+        lock: `0x${'0'.repeat(40)}`,
+        inputType: '',
+        outputType: ''
+      }
+      // @ts-ignore
+      const res = transactionSender.getWitnessForSign([{ lockHash: '1' }, { lockHash: '1' }], [undefined, WitnessArgs.fromObject(existWit)])
+      expect(res).toEqual([emptyWit, serializeWitnessArgs(existWit)])
     })
   })
 })

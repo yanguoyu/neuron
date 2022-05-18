@@ -20,6 +20,7 @@ import { EditTextField } from 'widgets/TextField'
 import { MultisigConfig } from 'services/remote'
 import PasswordRequest from 'components/PasswordRequest'
 import ApproveMultisigTx from 'components/ApproveMultisigTx'
+import Notification from 'containers/Notification'
 import { useSearch, useConfigManage, useExportConfig, useActions, useSubscription } from './hooks'
 
 import styles from './multisigAddress.module.scss'
@@ -114,6 +115,7 @@ const MultisigAddress = () => {
   }, [multisigBanlances, sendAction.sendFromMultisig])
   return (
     <div>
+      <Notification />
       <div className={styles.head}>
         <SearchBox
           value={keywords}

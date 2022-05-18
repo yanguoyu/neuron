@@ -26,6 +26,7 @@ import {
   DeviceInfo,
   updateWallet,
   getPlatform,
+  requestOpenInExplorer,
 } from 'services/remote'
 import { ErrorCode, errorFormatter, isSuccessResponse, RoutePath, useDidMount } from 'utils'
 import DropdownButton from 'widgets/DropdownButton'
@@ -325,6 +326,8 @@ const HardwareSign = ({
             res => {
               if (!isSuccessResponse(res)) {
                 setError(res.message.content)
+              } else {
+                requestOpenInExplorer({ type: 'transaction', key: res.result })
               }
             }
           )
