@@ -6,6 +6,7 @@ on:
 
 jobs:
   packaging:
+    if: ${{ github.event_name == 'none' }}
     strategy:
       matrix:
         node:
