@@ -36,7 +36,7 @@ jobs:
         with:
           message: |
             Packaging for test is done in [${{ steps.run_id.outputs.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{steps.run_id.outputs.run_id}})
-          pr_number: steps.pr_number.outputs.pr_num
+          pr_number: ${{ steps.pr_number.outputs.pr_num }}
 
         
 
