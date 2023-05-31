@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: dawidd6/action-download-artifact@v2
         with:
-          name: package_info
+          name: upload_package_info
           run_id: ${{ github.event.workflow_run.id }}
 
       - id: pr_number
