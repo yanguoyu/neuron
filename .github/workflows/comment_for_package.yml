@@ -17,10 +17,15 @@ jobs:
           name: upload_package_info
           run_id: ${{ github.event.workflow_run.id }}
 
+      - name: if non exist, skip comment
+        if: ${{ failure() }}
+        run: exit 0
+
       - id: pr_number
         run: |
           export PR_NUM=$(cat ./pr_number)
           echo "pr_num=$PR_NUM" >> $GITHUB_OUTPUT
+
       - id: run_id
         run: |
           export RUN_ID=$(cat ./run_id)
