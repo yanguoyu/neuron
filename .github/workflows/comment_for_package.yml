@@ -12,13 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - uses: dawidd6/action-download-artifact@v2
+      - id: download_artifact
+        uses: dawidd6/action-download-artifact@v2
+        continue-on-error: true
         with:
           name: upload_package_info
           run_id: ${{ github.event.workflow_run.id }}
 
       - name: if non exist, skip comment
-        if: ${{ failure() }}
+        if: ${{ step.download_artifact.outcome === 'failure' }}
         run: exit 0
 
       - id: pr_number
