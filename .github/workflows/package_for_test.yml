@@ -56,6 +56,7 @@ jobs:
         run: yarn global add lerna
 
       - name: Boostrap
+        if: ${{ github.event_name == 'pull_request_skip' }}
         run: |
           yarn bootstrap
         env:
