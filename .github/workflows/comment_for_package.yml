@@ -10,48 +10,33 @@ jobs:
   comment:
     name: Append links to the Pull Request
     runs-on: ubuntu-latest
-
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: 'Download artifact'
-        uses: actions/github-script@v6
+      - uses: dawidd6/action-download-artifact@v2
         with:
-          script: |
-            const allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               run_id: context.payload.workflow_run.id,
-            });
-            const matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
-              return artifact.name == "upload_package_info"
-            })[0];
-            const download = await github.rest.actions.downloadArtifact({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               artifact_id: matchArtifact.id,
-               archive_format: 'zip',
-            });
-            const fs = require('fs');
-            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/upload_package_info.zip`, Buffer.from(download.data));
+          name: package_info
+          run_id: ${{ github.event.workflow_run.id }}
 
-      - name: 'Unzip artifact'
-        run: unzip upload_package_info.zip
+      - id: pr_number
+        run: |
+          export PR_NUM=$(cat ./pr_number)
+          echo "pr_num=$PR_NUM" >> $GITHUB_OUTPUT
+      - id: run_id
+        run: |
+          export RUN_ID=$(cat ./run_id)
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
 
       - name: Read PR number and job id
         run: |
-          pr_number=$(cat ./pr_number)
-          run_id=$(cat ./run_id)
-          echo "pr_number=$pr_number" >> "$GITHUB_ENV"
-          echo "run_id=$run_id" >> "$GITHUB_ENV"
-          echo ${{ env.run_id }}
-          echo $pr_number
-          echo $run_id
+          echo "${{ steps.pr_number.outputs.pr_num }}"
+          echo "${{ steps.run_id.outputs.run_id }}"
 
       - uses: thollander/actions-comment-pull-request@v2
-        if: ${{ pr_number != "" }}
+        if: ${{ steps.pr_number.outputs.pr_num != "" && steps.run_id.outputs.run_id != '' }}
         with:
           message: |
-            Packaging for test is done in [${{ env.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{env.run_id}})
-          pr_number: env.pr_number
+            Packaging for test is done in [${{ steps.run_id.outputs.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{steps.run_id.outputs.run_id}})
+          pr_number: steps.pr_number.outputs.pr_num
 
         
 
