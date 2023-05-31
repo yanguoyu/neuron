@@ -32,7 +32,7 @@ jobs:
           echo "${{ steps.run_id.outputs.run_id }}"
 
       - uses: thollander/actions-comment-pull-request@v2
-        if: ${{ steps.pr_number.outputs.pr_num != "" && steps.run_id.outputs.run_id != '' }}
+        if: ${{ steps.pr_number.outputs.pr_num != '' && steps.run_id.outputs.run_id != '' }}
         with:
           message: |
             Packaging for test is done in [${{ steps.run_id.outputs.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{steps.run_id.outputs.run_id}})
