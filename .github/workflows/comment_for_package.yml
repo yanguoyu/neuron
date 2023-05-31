@@ -16,11 +16,11 @@ jobs:
         uses: dawidd6/action-download-artifact@v2
         continue-on-error: true
         with:
-          name: upload_package_info
+          name: package_info
           run_id: ${{ github.event.workflow_run.id }}
 
       - name: if non exist, skip comment
-        if: ${{ step.download_artifact.outcome === 'failure' }}
+        if: ${{ steps.download_artifact.outcome === 'failure' }}
         run: exit 0
 
       - id: pr_number
@@ -33,7 +33,7 @@ jobs:
           export RUN_ID=$(cat ./run_id)
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
 
-      - name: Read PR number and job id
+      - name: log pr_num and run_id
         run: |
           echo "${{ steps.pr_number.outputs.pr_num }}"
           echo "${{ steps.run_id.outputs.run_id }}"
@@ -42,7 +42,7 @@ jobs:
         if: ${{ steps.pr_number.outputs.pr_num != '' && steps.run_id.outputs.run_id != '' }}
         with:
           message: |
-            Packaging for test is done in [${{ steps.run_id.outputs.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{steps.run_id.outputs.run_id}})
+            Unsigned packaging for test is done in [${{ steps.run_id.outputs.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{steps.run_id.outputs.run_id}})
           pr_number: ${{ steps.pr_number.outputs.pr_num }}
 
         

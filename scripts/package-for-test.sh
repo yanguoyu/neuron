@@ -19,4 +19,3 @@ function package() {
 
 cd packages/neuron-wallet/
 package $1
-
