@@ -165,7 +165,7 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.number }}
           RUN_ID: ${{ github.run_id }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           mkdir -p ./package_info
           echo $PR_NUMBER > ./package_info/pr_number
