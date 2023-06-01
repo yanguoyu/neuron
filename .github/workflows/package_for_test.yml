@@ -177,7 +177,7 @@ jobs:
         with:
           name: package_info
           path: package_info/
-          retention-days: 3
+          retention-days: 2
   comment:
     needs: [packaging]
     if: ${{ github.event_name == 'push' }}
