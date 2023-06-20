@@ -67,7 +67,7 @@ jobs:
           CI: false
 
       - name: Package for MacOS
-        if: ${{ matrix.os == 'macos-latest' && env.APPLE_ID != '' }}
+        if: ${{ matrix.os == 'macos-latest' && env.APPLE_ID != '' && github.event_name != 'pull_request' }}
         run: |
           ./scripts/download-ckb.sh mac
           yarn package:test mac
@@ -79,7 +79,7 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
 
       - name: Package for MacOS for skip code sign
-        if: ${{ matrix.os == 'macos-latest' && env.APPLE_ID == '' }}
+        if: ${{ matrix.os == 'macos-latest' && (env.APPLE_ID == '' || github.event_name == 'pull_request') }}
         run: |
           export CSC_IDENTITY_AUTO_DISCOVERY=false
           unset APPLE_ID
