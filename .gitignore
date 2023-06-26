@@ -41,6 +41,7 @@ lerna-debug.log
 #docs
 docs
 
+
 # vscode config
 ./packages/neuron-wallet/.vscode
 
