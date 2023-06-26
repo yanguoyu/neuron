@@ -19,6 +19,14 @@ jobs:
           reaction: "true"
           permission-level: write
 
+      - name: Update comment
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          body: |
+            **Edit:** Some additional info
+          reactions: eyes
+
       - name: Set git to use LF
         run: |
           git config --global core.autocrlf false
