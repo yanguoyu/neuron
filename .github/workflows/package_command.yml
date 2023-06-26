@@ -2,7 +2,6 @@ on: issue_comment
 name: Issue Comments
 permissions:
   issues: write
-  pull_requests: write
 jobs:
   check_comments:
     name: Check comments for /test
