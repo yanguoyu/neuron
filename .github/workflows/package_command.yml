@@ -2,6 +2,7 @@ on: issue_comment
 name: Issue Comments
 permissions:
   issues: write
+  pull_requests: write
 jobs:
   check_comments:
     name: Check comments for /test
@@ -11,6 +12,7 @@ jobs:
         id: command
         uses: xt0rted/slash-command-action@v1
         with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
           command: test
           reaction: "true"
           reaction-type: "eyes"
