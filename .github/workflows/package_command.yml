@@ -27,6 +27,7 @@ jobs:
           body: |
             **Edit:** Some additional info
           reactions: eyes
+          edit-mode: replace
 
       - name: Set git to use LF
         run: |
