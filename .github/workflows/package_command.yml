@@ -17,6 +17,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           command: test
           reaction: "true"
+          allow-edits: "true"
           permission-level: write
 
       - name: Update comment
