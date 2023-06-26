@@ -44,6 +44,12 @@ jobs:
       - name: Install Lerna
         run: yarn global add lerna
 
+      - name: Boostrap
+        run: |
+          yarn
+        env:
+          CI: false
+
       - name: Package for MacOS
         if: ${{ env.APPLE_ID != '' }}
         run: |
