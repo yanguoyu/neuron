@@ -1,0 +1,22 @@
+on: issue_comment
+name: Issue Comments
+permissions:
+  issues: write
+jobs:
+  check_comments:
+    name: Check comments for /test
+    runs-on: ubuntu-latest
+    env:
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+    steps:
+      - name: Check for Command
+        id: command
+        uses: xt0rted/slash-command-action@v1
+        with:
+          command: test
+          reaction: "true"
+          reaction-type: "eyes"
+          allow-edits: "false"
+          permission-level: write
+      - name: Act on the command
+        run: echo "The command was '${{ env.APPLE_ID }}' with arguments '${{ steps.command.outputs.command-arguments }}'"
