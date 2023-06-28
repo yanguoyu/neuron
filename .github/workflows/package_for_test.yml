@@ -184,7 +184,7 @@ jobs:
 
   comment:
     needs: [packaging]
-    if: ${{ cancelled() }}
+    if: ${{ success() }}
     name: Append links to the Pull Request
     runs-on: ubuntu-latest
     steps:
