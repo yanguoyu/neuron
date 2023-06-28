@@ -23,11 +23,6 @@ jobs:
           allow-edits: "true"
           permission-level: write
 
-      - id: skip_without_package_command
-        if: ${{ github.event_name == 'issue_comment' && steps.command.outputs.command-name != 'package' }}
-        run: |
-          exit 130
-
   packaging:
     needs: [check-command]
 
@@ -188,13 +183,12 @@ jobs:
 
   comment:
     needs: [packaging]
-    # During a pull_request event triggered by a forked repository, actions have no write access to GitHub resources and will fail on any attempt.
-    # ref https://github.com/peter-evans/create-pull-request/blob/main/docs/concepts-guidelines.md#restrictions-on-repository-forks
+    if: ${{ always() }}
     name: Append links to the Pull Request
     runs-on: ubuntu-latest
     steps:
       - name: comment-by-push
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && success() }}
         uses: peter-evans/commit-comment@v2
         with:
           body: |
@@ -206,6 +200,7 @@ jobs:
         with:
           comment-id: ${{ github.event.comment.id }}
           body: |
-            Packaging for test is done in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
-          reactions: eyes
+            ${{ success() ? Packaging for test is done in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) : Packageing failed }}
+          reactions: |
+            ${{ success() ? +1 : -1 }}
           edit-mode: append
