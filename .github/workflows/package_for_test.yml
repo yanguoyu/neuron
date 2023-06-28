@@ -205,7 +205,7 @@ jobs:
 
   comment-when-failed:
     needs: [packaging]
-    if: ${{ needs.packaging.result == 'failure' }}
+    if: ${{ always() && needs.packaging.result == 'failure' }}
     name: Append failed comment to the comment
     runs-on: ubuntu-latest
     steps:
