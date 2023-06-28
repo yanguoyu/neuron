@@ -183,7 +183,7 @@ jobs:
 
   comment:
     needs: [packaging]
-    if: ${{ always() }}
+    if: ${{ success() || failure() }}
     name: Append links to the Pull Request
     runs-on: ubuntu-latest
     steps:
