@@ -205,7 +205,7 @@ jobs:
 
   comment-when-failed:
     needs: [packaging]
-    if: ${{ failure() }}
+    if: ${{ needs.packaging.result == 'failure' }}
     name: Append failed comment to the comment
     runs-on: ubuntu-latest
     steps:
@@ -214,5 +214,5 @@ jobs:
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ github.event.comment.id }}
-          body: Packageing failed
+          body: Packageing failed in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
           edit-mode: append
