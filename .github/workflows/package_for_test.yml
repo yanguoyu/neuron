@@ -184,7 +184,6 @@ jobs:
 
   comment:
     needs: [packaging]
-    if: ${{ success() || failure() }}
     name: Append links to the Pull Request
     runs-on: ubuntu-latest
     steps:
