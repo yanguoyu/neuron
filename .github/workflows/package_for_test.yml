@@ -187,20 +187,26 @@ jobs:
     name: Append links to the Pull Request
     runs-on: ubuntu-latest
     steps:
-      - name: comment-by-push
+      - name: Comment by push event
         if: ${{ github.event_name == 'push' && success() }}
         uses: peter-evans/commit-comment@v2
         with:
           body: |
             Packaging for test is done in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
 
-      - name: comment-by-pr-comment
-        if: ${{ github.event_name == 'issue_comment' }}
+      - name: Comment by pull request comment event when package success
+        if: ${{ github.event_name == 'issue_comment' && success() }}
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ github.event.comment.id }}
           body: |
-            ${{ success() ? Packaging for test is done in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}) : Packageing failed }}
-          reactions: |
-            ${{ success() ? +1 : -1 }}
+            Packaging for test is done in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
+          edit-mode: append
+
+      - name: comment-by-pr-comment-when
+        if: ${{ github.event_name == 'issue_comment' && failure() }}
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          comment-id: ${{ github.event.comment.id }}
+          body: Packageing failed
           edit-mode: append
