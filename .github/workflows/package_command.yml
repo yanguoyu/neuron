@@ -20,6 +20,9 @@ jobs:
           allow-edits: "true"
           permission-level: write
 
+      - name: Act on the command
+        run: echo "The command was '${{ steps.command.outputs.command-name }}' with arguments '${{ steps.command.outputs.command-arguments }}'"
+
       - name: Update comment
         uses: peter-evans/create-or-update-comment@v3
         with:
