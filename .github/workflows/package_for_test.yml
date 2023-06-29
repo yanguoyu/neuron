@@ -8,6 +8,8 @@ on:
 jobs:
   check_command:
     runs-on: ubuntu-latest
+    ## skip if trigger by issue comment but not pr comment
+    if: ${{ (github.event_name == 'issue_comment' && github.event.issue.pull_request) || github.event_name == 'push' }}
     permissions:
       pull-requests: write
     steps:
@@ -20,9 +22,6 @@ jobs:
           reaction-type: "eyes"
           allow-edits: "true"
           permission-level: write
-      - name: Exit when issue comment trigger
-        if: ${{ github.event_name == 'issue_comment' && !github.event.issue.pull_request }}
-        run: exit 130
 
   packaging:
     needs: [check_command]
