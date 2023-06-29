@@ -208,7 +208,7 @@ jobs:
         with:
           comment-id: ${{ github.event.comment.id }}
           body: |
-            Packaging for test is done in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
+            Packaging for test is done in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}). @${{ github.event.comment.user.name }}
           edit-mode: append
 
   comment_when_package_failed:
