@@ -6,13 +6,13 @@ on:
   push:
 
 jobs:
-  check-command:
+  check_command:
+    if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
       - name: Check for package command
-        if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request }}
         uses: xt0rted/slash-command-action@v1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -22,11 +22,11 @@ jobs:
           allow-edits: "true"
           permission-level: write
       - name: Exit when issue comment trigger
-        if: ${{ github.event_name == 'issue_comment' && !github.event.issue.pull_request }}
+        if: ${{ !github.event.issue.pull_request }}
         run: exit 130
 
   packaging:
-    needs: [check-command]
+    needs: [check_command]
 
     strategy:
       matrix:
@@ -192,7 +192,7 @@ jobs:
           name: Neuron-Linux
           path: release/Neuron-*.AppImage
 
-  comment-when-success:
+  comment_when_package_success:
     needs: [packaging]
     name: Append links to the Pull Request
     runs-on: ubuntu-latest
@@ -213,7 +213,7 @@ jobs:
             Packaging for test is done in [${{ github.run_id }}](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})
           edit-mode: append
 
-  comment-when-failed:
+  comment_when_package_failed:
     needs: [packaging]
     if: ${{ always() && needs.packaging.result == 'failure' }}
     name: Append failed comment to the comment
