@@ -7,7 +7,6 @@ on:
 
 jobs:
   check_command:
-    if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
