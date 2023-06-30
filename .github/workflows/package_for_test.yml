@@ -58,6 +58,7 @@ jobs:
           echo repositoryUrl: ${{ github.repositoryUrl }}
           echo commenturl: ${{ github.event.comment.url }}
           echo issue_url: ${{ github.event.comment.issue_url }}
+          echo pullRequest: ${{ github.event.pullRequest.headRepository }}
           echo node_id: ${{ github.event.comment.node_id }}
           echo issue_number: ${{ github.event.issue.number }}
           echo pull_requestUrl: ${{ github.event.issue.pull_request.url }}
