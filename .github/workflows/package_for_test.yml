@@ -57,8 +57,6 @@ jobs:
       - name: Get PR Branch
         if: github.event_name == 'issue_comment'
         id: comment-branch
-        permissions:
-          pull-requests: write
         uses: alessbell/pull-request-comment-branch@v1.1
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
