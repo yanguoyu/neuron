@@ -48,7 +48,13 @@ jobs:
         run: |
           git config --global core.autocrlf false
           git config --global core.eol lf
-          echo {{ github.ref }}
+          echo ${{ github.ref }}
+          echo ${{ github.head_ref }}
+          echo ${{ github.repository }}
+          echo ${{ github.repositoryUrl }}
+          echo ${{ github.event.comment.url }}
+          echo ${{ github.event.comment.issue_url }}
+          echo ${{ github.event.issue.pull_request.url }}
 
       - name: Checkout for push
         uses: actions/checkout@v3
