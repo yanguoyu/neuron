@@ -48,13 +48,19 @@ jobs:
         run: |
           git config --global core.autocrlf false
           git config --global core.eol lf
-          echo ${{ github.ref }}
-          echo ${{ github.head_ref }}
-          echo ${{ github.repository }}
-          echo ${{ github.repositoryUrl }}
-          echo ${{ github.event.comment.url }}
-          echo ${{ github.event.comment.issue_url }}
-          echo ${{ github.event.issue.pull_request.url }}
+
+      - name: Log
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          echo ref: ${{ github.ref }}
+          echo head_ref: ${{ github.head_ref }}
+          echo repository: ${{ github.repository }}
+          echo repositoryUrl: ${{ github.repositoryUrl }}
+          echo commenturl: ${{ github.event.comment.url }}
+          echo issue_url: ${{ github.event.comment.issue_url }}
+          echo node_id: ${{ github.event.comment.node_id }}
+          echo issue_id: ${{ github.event.issue.id }}
+          echo pull_requestUrl: ${{ github.event.issue.pull_request.url }}
 
       - name: Checkout for push
         uses: actions/checkout@v3
