@@ -1,3 +1,4 @@
 #!/bin/bash
 
-echo "test" > ./packages/neuron-wallet/.env
+time=$(date "+%Y-%m-%d %H:%M:%S")
+echo "${time}" > ./packages/neuron-wallet/.env
