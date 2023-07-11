@@ -19,7 +19,7 @@ jobs:
             repo: context.repo.repo,
             pull_number: context.issue.number,
           })
-          console.log(commits)
+          console.log(commits.data.at(-1).committer.name)
 
     - name: Update npm packages
       uses: technote-space/create-pr-action@v2
