@@ -12,13 +12,14 @@ jobs:
     - name: Get Last commit
       uses: actions/github-script@v6
       id: last_commit
-      script: |
-        const commits = github.rest.pulls.listCommits({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          pull_number: context.issue.number,
-        })
-        console.log(commits[0].committer.name)
+      with:
+        script: |
+          const commits = github.rest.pulls.listCommits({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number,
+          })
+          console.log(commits[0].committer.name)
 
     - name: Update npm packages
       uses: technote-space/create-pr-action@v2
