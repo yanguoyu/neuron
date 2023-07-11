@@ -9,13 +9,25 @@ jobs:
    name: Update npm packages
    runs-on: ubuntu-latest
    steps:
-     - name: Update npm packages
-       uses: technote-space/create-pr-action@v2
-       with:
-         EXECUTE_COMMANDS: |
-           yarn update:valid:target
-         COMMIT_MESSAGE: 'chore: update npm dependencies'
-         COMMIT_NAME: 'GitHub Actions'
-         COMMIT_EMAIL: 'example@example.com'
-         PR_BRANCH_NAME: 'chore-npm-update-${PR_ID}'
-         PR_TITLE: 'chore: update npm dependencies'
+    - name: Get Last commit
+      uses: actions/github-script@v6
+      id: last_commit
+      with:
+        script: |
+          const commits = await github.rest.pulls.listCommits({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number,
+          })
+          console.log(commits)
+
+    - name: Update npm packages
+      uses: technote-space/create-pr-action@v2
+      with:
+        EXECUTE_COMMANDS: |
+          yarn update:valid:target
+        COMMIT_MESSAGE: 'chore: update npm dependencies'
+        COMMIT_NAME: 'GitHub Actions'
+        COMMIT_EMAIL: 'example@example.com'
+        PR_BRANCH_NAME: 'chore-npm-update-${PR_ID}'
+        PR_TITLE: 'chore: update npm dependencies'
