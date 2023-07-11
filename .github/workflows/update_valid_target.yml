@@ -1,9 +1,6 @@
 name: Update valid target
 on:
- schedule:
-   - cron: '* * * * *'
  pull_request:
-    types: [opened]
     branches:
       - develop
 
