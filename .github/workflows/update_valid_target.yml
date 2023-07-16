@@ -1,0 +1,43 @@
+name: Update ckb node assume valid target
+
+on:
+  pull_request:
+    types: [ready_for_review]
+    branches:
+      - master
+
+jobs:
+  ready-for-release:
+    name: Update ckb node assume valid target
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          cache: "yarn"
+
+      - name: Restore
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            */*/node_modules
+          key: 2022-05-07-${{ runner.os }}-${{ hashFiles('**/yarn.lock')}}
+
+      - name: Bootstrap
+        run: |
+          yarn
+
+      - name: Create PR
+        uses: technote-space/create-pr-action@v2
+        with:
+          EXECUTE_COMMANDS: |
+            yarn update:valid:target
+          COMMIT_MESSAGE: 'chore: update ckb node assume valid target'
+          COMMIT_NAME: 'GitHub Actions'
+          COMMIT_EMAIL: 'neuron@magickbase.com'
+          PR_BRANCH_NAME: 'chore-update-${PR_ID}'
+          PR_TITLE: 'chore: update ckb node assume valid target'
