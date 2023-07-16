@@ -1,0 +1,78 @@
+name: Update ckb node assume valid target
+
+on:
+  pull_request:
+    types: [ready_for_review]
+    branches:
+      - master
+
+jobs:
+  ready-for-release:
+    name: Update ckb node assume valid target
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Branch
+        uses: peterjgrainger/action-create-branch@v2.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          branch: 'chore-update-valid-target/${{github.head_ref}}'
+          sha: '${{ github.event.pull_request.head.sha }}'
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: 'chore-update-valid-target/${{github.head_ref}}'
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.12.0
+
+      - name: Write env file
+        run: |
+          npm run update:valid:target
+
+      - name: Commit changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FILE_TO_COMMIT: packages/neuron-wallet/.env
+          DESTINATION_BRANCH: chore-update-valid-target/${{github.head_ref}}
+        run: |
+          export TODAY=$( date -u '+%Y-%m-%d' )
+          export MESSAGE="chore: Update ckb node assume valid target for $TODAY"
+          export SHA=$( git rev-parse $DESTINATION_BRANCH:$FILE_TO_COMMIT )
+          export CONTENT=$( base64 -i $FILE_TO_COMMIT )
+          gh api --method PUT /repos/:owner/:repo/contents/$FILE_TO_COMMIT \
+            --field message="$MESSAGE" \
+            --field content="$CONTENT" \
+            --field encoding="base64" \
+            --field branch="$DESTINATION_BRANCH" \
+            --field sha="$SHA"
+
+      - name: Create PR
+        uses: actions/github-script@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE: ${{github.head_ref}}
+          HEAD: chore-update-valid-target/${{github.head_ref}}
+        with:
+          script: |
+            const pulls = await github.rest.pulls.list({
+              owner,
+              repo,
+            })
+            if (pulls.some(pull => {
+              console.log(pull.head.ref)
+              return pull.head.ref = HEAD
+            })) {
+              return
+            }
+            const { BASE, HEAD } = process.env
+            github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: HEAD,
+              base: BASE,
+              title: 'chore: Update ckb node assume valid target'
+            })
