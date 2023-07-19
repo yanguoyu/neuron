@@ -82,5 +82,5 @@ jobs:
               head: HEAD,
               base: BASE,
               title: 'chore: Update ckb node assume valid target',
-              body: `This PR uses to update ckb node assume valid target for PR https://github.com/yanguoyu/neuron/pull/${context.issue.number}`,
+              body: `This PR uses to update ckb node assume valid target for PR ${context.repo.repo}/pull/${context.issue.number}`,
             })
