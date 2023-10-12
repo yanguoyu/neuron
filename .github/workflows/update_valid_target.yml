@@ -1,10 +1,9 @@
 name: Update ckb node assume valid target
 
 on:
-  pull_request:
-    types: [ready_for_review]
+  create:
     branches:
-      - master
+      - "rc/**"
 
 jobs:
   ready-for-release:
