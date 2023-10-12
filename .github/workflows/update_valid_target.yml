@@ -15,13 +15,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          branch: 'chore-update-valid-target/${{github.head_ref}}'
+          branch: 'chore-update-valid-target/${{github.ref_name}}'
           sha: '${{ github.event.pull_request.head.sha }}'
 
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          ref: 'chore-update-valid-target/${{github.head_ref}}'
+          ref: 'chore-update-valid-target/${{github.ref_name}}'
       
       - name: Setup Node
         uses: actions/setup-node@v3
@@ -36,7 +36,7 @@ jobs:
         uses: actions/github-script@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BASE: ${{ github.head_ref }}
+          BASE: ${{ github.ref }}
         with:
           script: |
             const fs = require('node:fs')
@@ -63,8 +63,8 @@ jobs:
         uses: actions/github-script@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BASE: ${{github.head_ref}}
-          HEAD: chore-update-valid-target/${{github.head_ref}}
+          BASE: ${{github.ref}}
+          HEAD: chore-update-valid-target/${{github.ref_name}}
           REPO: ${{github.repository}}
         with:
           script: |
