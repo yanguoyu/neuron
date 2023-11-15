@@ -28,6 +28,7 @@ describe('NodeService', () => {
   const rpcRequestMock = jest.fn()
   const getChainMock = jest.fn()
   const getLocalNodeInfoMock = jest.fn()
+  const pathJoinMock = jest.fn()
 
   const fakeHTTPUrl = 'http://fakeurl'
 
@@ -54,6 +55,7 @@ describe('NodeService', () => {
     getLocalNodeInfoMock.mockReset()
     stubbedStartLightNode.mockReset()
     stubbedStopLightNode.mockReset()
+    pathJoinMock.mockReset()
   }
 
   beforeEach(() => {
@@ -172,6 +174,10 @@ describe('NodeService', () => {
         },
       }
     })
+
+    jest.doMock('path', () => ({
+      join: pathJoinMock,
+    }))
 
     stubbedRxjsDebounceTime.mockReturnValue((x: any) => x)
     getChainMock.mockRejectedValue('no chain')
@@ -409,10 +415,7 @@ describe('NodeService', () => {
       nodeService = new NodeService()
       nodeService.getNeuronCompatibilityCKB = () => ({
         '0.110': {
-          '0.110': true,
-          '0.109': true,
-          '0.108': false,
-          '0.107': false,
+          full: ['0.110', '0.109'],
         },
       })
       stubbedNetworsServiceGet.mockReturnValue({ remote: BUNDLED_CKB_URL, readonly: true })
@@ -456,10 +459,7 @@ describe('NodeService', () => {
       nodeService = new NodeService()
       nodeService.getNeuronCompatibilityCKB = () => ({
         '0.110': {
-          '0.110': true,
-          '0.109': true,
-          '0.108': false,
-          '0.107': false,
+          full: ['0.110', '0.109'],
         },
       })
       stubbedNetworsServiceGet.mockReturnValueOnce({ remote: BUNDLED_CKB_URL, readonly: true })
@@ -525,21 +525,32 @@ describe('NodeService', () => {
     })
     it('read file error', () => {
       existsSyncMock.mockReturnValue(true)
-      readFileSyncMock.mockReturnValue(new Error('read failed'))
+      pathJoinMock.mockReturnValue('./not-exist.json')
       expect(nodeService.getNeuronCompatibilityCKB()).toBeUndefined()
     })
     it('ckb version content is wrong', async () => {
       existsSyncMock.mockReturnValue(true)
-      readFileSyncMock.mockReturnValue('')
+      pathJoinMock.mockReturnValue('exist.json')
+      jest.doMock('exist.json', () => ({}), { virtual: true })
       expect(nodeService.getNeuronCompatibilityCKB()).toStrictEqual({})
     })
     it('success', async () => {
       existsSyncMock.mockReturnValue(true)
-      readFileSyncMock.mockReturnValue('ckb,0.110,0.109\nNeuron,,\n0.109,yes,no')
+      pathJoinMock.mockReturnValue('success.json')
+      jest.doMock(
+        'success.json',
+        () => ({
+          compatible: {
+            '0.109': {
+              full: ['0.108'],
+            },
+          },
+        }),
+        { virtual: true }
+      )
       expect(nodeService.getNeuronCompatibilityCKB()).toStrictEqual({
         '0.109': {
-          '0.110': true,
-          '0.109': false,
+          full: ['0.108'],
         },
       })
     })
