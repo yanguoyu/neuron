@@ -6,6 +6,13 @@ on:
   push:
 
 jobs:
+  test:
+    name: Append links to the Pull Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: print
+        run: |
+          echo {{ github.event.comment.author_association }}
   packaging:
     if: ${{ (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/package') && contains(fromJSON('["MEMBER", "OWNER"]'), (github.event.comment.author_association))) || github.event_name == 'push' }}
 
