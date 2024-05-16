@@ -10,7 +10,7 @@ const appController = AppController.getInstance()
 const singleInstanceLock = app.requestSingleInstanceLock()
 if (singleInstanceLock) {
   app.on('ready', async () => {
-    logger.info('App:\tNeuron is starting')
+    logger.info('App:\tNeuron is starting for test')
     changeLanguage(SettingsService.getInstance().locale)
 
     appController.start()
