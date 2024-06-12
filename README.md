@@ -16,6 +16,7 @@ You will need `node >= 18.12.0` and `yarn >= 1.14` to build and run Neuron.
 #### Lerna
 
 
+
 This project uses [lerna](https://github.com/lerna/lerna/) for package management.
 
 ```shell
