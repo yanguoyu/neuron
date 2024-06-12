@@ -6,8 +6,45 @@ on:
   push:
 
 jobs:
+  check_issue_comment:
+    if: ${{ (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/package') && contains(fromJSON('["OWNER", "COLLABORATOR"]'), github.event.comment.author_association)) }}
+
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Check without commit after comment
+        uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER: ${{github.event.issue.number}}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        with:
+          script: |
+            const { ISSUE_NUMBER, COMMENT_ID } = process.env
+            let page = 1
+            let hasFoundComment = false
+            while(true) {
+              const { data: timelines } = await github.rest.issues.listEventsForTimeline({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ISSUE_NUMBER,
+                page,
+                per_page: 100,
+              })
+              if (timelines.find(v => {
+                hasFoundComment = hasFoundComment || (v.event === 'commented' && `${v.id}` === `${COMMENT_ID}`)
+                return hasFoundComment && v.event === 'committed'
+              })) {
+                throw new Error('The last commit comes after the comment, please comment and package after last commit')
+              }
+              if (timelines.length === 0) {
+                return
+              }
+              page += 1
+            }
+
   packaging:
-    if: ${{ (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/package') && contains(fromJSON('["OWNER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'push' }}
+    needs: [check_issue_comment]
+    if: ${{ (always() && needs.check_issue_comment.result == 'skipped' && github.event_name == 'push') || success() }}
 
     strategy:
       matrix:
