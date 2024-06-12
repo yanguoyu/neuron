@@ -9,7 +9,7 @@ jobs:
   check_issue_comment:
     if: ${{ (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/package') && contains(fromJSON('["OWNER", "COLLABORATOR"]'), github.event.comment.author_association)) }}
 
-    run-on: ubuntu-20.04
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Check without commit after comment
