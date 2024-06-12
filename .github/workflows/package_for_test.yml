@@ -49,8 +49,8 @@ jobs:
           echo "$COMMENT_UPDATE_AT"
           echo "$ISSUE_UPDATE_AT"
         env:
-          COMMENT_UPDATE_AT: ${{ github.event.issue_comment.comment.updated_at }}
-          ISSUE_UPDATE_AT: ${{ github.event.issue_comment.issue.updated_at }}
+          COMMENT_UPDATE_AT: ${{ github.event.comment.updated_at }}
+          ISSUE_UPDATE_AT: ${{ github.event.comment.issue.updated_at }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
