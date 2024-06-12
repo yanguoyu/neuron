@@ -42,6 +42,7 @@ $ lerna run rebuild:nativemodules
 #### Add CKB Indexer
 
 
+
 CKB Indexer is a service to create cell and transaction indexes.
 
 Download [CKB Indexer](https://github.com/nervosnetwork/ckb-indexer/releases) and move the binary into `packages/neuron-wallet/bin/{win/linux/mac}/`.
