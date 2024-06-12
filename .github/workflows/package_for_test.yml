@@ -7,6 +7,7 @@ on:
 
 jobs:
   packaging:
+    needs: [check_issue_comment]
     if: ${{ (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/package') && contains(fromJSON('["OWNER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'push' }}
 
     strategy:
@@ -39,6 +40,37 @@ jobs:
       - name: Checkout for push
         uses: actions/checkout@v4
         if: ${{ github.event_name == 'push' }}
+
+      - name: Check without commit after comment
+        uses: actions/github-script@v7
+        if: ${{ github.event_name == 'issue_comment' }}
+        env:
+          ISSUE_NUMBER: ${{github.event.issue.number}}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        with:
+          script: |
+            const { ISSUE_NUMBER, COMMENT_ID } = process.env
+            let page = 1
+            let hasFoundComment = false
+            while(true) {
+              const { data: timelines } = await github.rest.issues.listEventsForTimeline({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ISSUE_NUMBER,
+                page,
+                per_page: 100,
+              })
+              if (timelines.some(v => {
+                hasFoundComment = hasFoundComment || (v.event === 'commented' && `${v.id}` === `${COMMENT_ID}`)
+                return hasFoundComment && v.event === 'committed'
+              })) {
+                throw new Error('The last commit comes after the comment, please comment and package after last commit')
+              }
+              if (timelines.length === 0) {
+                return
+              }
+              page += 1
+            }
 
       - name: Checkout for PR
         uses: actions/checkout@v4
