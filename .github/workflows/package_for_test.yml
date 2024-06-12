@@ -14,9 +14,7 @@ jobs:
         node:
           - 18.12.0
         os:
-          - macos-latest
           - ubuntu-20.04
-          - windows-2019
 
     runs-on: ${{ matrix.os }}
 
@@ -48,8 +46,11 @@ jobs:
       
       - name: Echo
         run: |
-          echo "${{ github.event.issue_comment.comment.updated_at }}"
-          echo "${{ github.event.issue_comment.issue.updated_at }}"
+          echo "$COMMENT_UPDATE_AT"
+          echo "$ISSUE_UPDATE_AT"
+        env:
+          COMMENT_UPDATE_AT: ${{ github.event.issue_comment.comment.updated_at }}
+          ISSUE_UPDATE_AT: ${{ github.event.issue_comment.issue.updated_at }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
