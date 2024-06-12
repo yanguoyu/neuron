@@ -45,6 +45,11 @@ jobs:
         if: ${{ github.event_name == 'issue_comment' }}
         with:
           ref: refs/pull/${{ github.event.issue.number }}/merge
+      
+      - name: Echo
+        run: |
+          echo "${{ github.event.issue_comment.comment.updated_at }}"
+          echo "${{ github.event.issue_comment.issue.updated_at }}"
 
       - name: Setup Node
         uses: actions/setup-node@v4
