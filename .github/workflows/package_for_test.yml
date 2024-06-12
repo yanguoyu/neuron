@@ -48,9 +48,11 @@ jobs:
         run: |
           echo "$COMMENT_UPDATE_AT"
           echo "$ISSUE_UPDATE_AT"
+          echo "$TIMELINE"
         env:
           COMMENT_UPDATE_AT: ${{ github.event.comment.updated_at }}
           ISSUE_UPDATE_AT: ${{ github.event.issue.updated_at }}
+          TIMELINE: ${{ github.event.issue.timeline_url }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
