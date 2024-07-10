@@ -20,8 +20,11 @@ export default class FullSynchronizer extends Synchronizer {
       return
     }
 
+    logger.info('Full:\t upsertTxHashes')
     await this.upsertTxHashes()
+    logger.info('Full:\t upsertTxHashes end')
     const indexerTipNumber = parseInt(indexerTipBlock.blockNumber, 16)
+    logger.info('Full:\t indexerTipNumber:', indexerTipNumber)
     await this.notifyAndSyncNext(indexerTipNumber)
   }
 
@@ -30,6 +33,7 @@ export default class FullSynchronizer extends Synchronizer {
 
     while (this.pollingIndexer) {
       const indexerTipBlock = await this.indexer.tip()
+      logger.info('Full:\t get tip', indexerTipBlock)
       await this.synchronize(indexerTipBlock)
       await CommonUtils.sleep(5000)
     }

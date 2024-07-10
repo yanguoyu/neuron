@@ -99,6 +99,7 @@ export abstract class Synchronizer {
     const nextUnprocessedBlockNumber = await IndexerCacheService.nextUnprocessedBlock([
       ...this.addressesByWalletId.keys(),
     ])
+    logger.info('Synchronizer:\t nextUnprocessedBlockNumber:', nextUnprocessedBlockNumber, indexerTipNumber)
     if (nextUnprocessedBlockNumber) {
       this.blockTipsSubject.next({
         cacheTipNumber: parseInt(nextUnprocessedBlockNumber),

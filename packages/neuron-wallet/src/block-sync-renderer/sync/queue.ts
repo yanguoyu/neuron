@@ -71,6 +71,7 @@ export default class Queue {
       } else {
         this.#indexerConnector = new FullSynchronizer(this.#addresses, this.#url, this.#nodeType)
       }
+      logger.info('Queue:\tconnect', this.#nodeType)
       await this.#indexerConnector!.connect(this.#syncMultisig)
     } catch (error) {
       logger.error('Restarting child process due to error', error.message)
