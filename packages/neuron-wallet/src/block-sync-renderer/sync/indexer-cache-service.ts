@@ -7,6 +7,7 @@ import TransactionWithStatus from '../../models/chain/transaction-with-status'
 import SyncInfoEntity from '../../database/chain/entities/sync-info'
 import { getConnection } from '../../database/chain/connection'
 import { TransactionCollector, CellCollector, Indexer as CkbIndexer } from '@ckb-lumos/ckb-indexer'
+import logger from '../../utils/logger'
 
 export default class IndexerCacheService {
   private addressMetas: AddressMeta[]
@@ -171,8 +172,11 @@ export default class IndexerCacheService {
   }
 
   public async upsertTxHashes(): Promise<string[]> {
+    logger.info('upsertTxHashes:\t start')
     const tipBlockNumber = await this.rpcService.getTipBlockNumber()
+    logger.info('upsertTxHashes:\t getTipBlockNumber', tipBlockNumber)
     const mappingsByTxHash = await this.fetchTxMapping()
+    logger.info('upsertTxHashes:\t fetchTxMapping', mappingsByTxHash)
 
     const fetchedTxHashes = [...mappingsByTxHash.keys()]
     if (!fetchedTxHashes.length) {
@@ -207,12 +211,14 @@ export default class IndexerCacheService {
 
     fetchBlockDetailsQueue.push(newTxHashes)
 
+    logger.info('upsertTxHashes:\t fetchBlockDetailsQueue start')
     await new Promise<void>((resolve, reject) => {
       fetchBlockDetailsQueue.error(reject)
       fetchBlockDetailsQueue.drain(resolve)
     })
 
     const indexerCaches: IndexerTxHashCache[] = []
+    logger.info('upsertTxHashes:\t fetchBlockDetailsQueue end')
     for (const txWithStatus of txsWithStatus) {
       const { transaction } = txWithStatus
       const mappings = mappingsByTxHash.get(transaction.hash!)
@@ -235,6 +241,7 @@ export default class IndexerCacheService {
     await getConnection().manager.save(indexerCaches, { chunk: 100 })
 
     await this.saveCacheBlockNumber(tipBlockNumber)
+    logger.info('upsertTxHashes:\t upsertTxHashes end')
     return newTxHashes
   }
 
