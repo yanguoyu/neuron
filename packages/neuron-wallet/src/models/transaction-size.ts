@@ -95,7 +95,7 @@ export default class TransactionSize {
 
   public static multiSignWitness(r: number, m: number, n: number): number {
     const blake160 = '0x' + '0'.repeat(40)
-    const lock = Multisig.serialize(new Array(n).fill(blake160), r, m, n) + '0'.repeat(130 * m)
+    const lock = Multisig.serialize(new Array(n).fill(blake160), r, m, n) + '0'.repeat(130 * r > m ? r : m)
     const wit = new WitnessArgs(lock)
     return TransactionSize.witness(wit)
   }

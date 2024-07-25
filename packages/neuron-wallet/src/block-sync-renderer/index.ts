@@ -39,6 +39,7 @@ export const killBlockSyncTask = async () => {
     )
   ).finally(() => (requests = new Map()))
 
+  logger.info('Sync:\tWill kill child process')
   await waitForChildClose(_child)
 }
 
@@ -51,6 +52,7 @@ const waitForChildClose = (c: ChildProcess) =>
       channel: 'unmount',
       message: null,
     }
+    logger.info('Sync:\tsend message to kill child process')
     c.send(msg, err => {
       if (err) {
         reject(err)
@@ -116,6 +118,7 @@ export const createBlockSyncTask = async () => {
 
   child.on('message', ({ id, message, channel }: WorkerMessage) => {
     if (id !== undefined) {
+      logger.info(`Sync:\t response request id is: ${id}`)
       if (!requests.has(id)) {
         return
       }
@@ -189,6 +192,7 @@ export const createBlockSyncTask = async () => {
 export const registerRequest = (c: ChildProcess, msg: Required<WorkerMessage>) =>
   new Promise((resolve, reject) => {
     requests.set(msg.id, { resolve, reject })
+    logger.info(`Sync:\t request id is: ${msg.id}`, msg)
     c.send(msg, err => {
       if (err) {
         logger.error(`Sync:\tfailed to send message to child process: ${msg}`)

@@ -113,4 +113,16 @@ export const register = () => {
       }
     }
   })
+  interval(100).subscribe(async () => {
+    try {
+      const database = getConnection()
+      const res = await database.manager.query('select count(*) as total from "test"')
+      await database.manager.query(`INSERT INTO  "test" ("id") VALUES ('${res[0].total + 1}');`)
+    } catch (err) {
+      logger.warn(`ignore error: ${err}`)
+      if (err.name !== CONNECTION_NOT_FOUND_NAME) {
+        throw err
+      }
+    }
+  })
 }
