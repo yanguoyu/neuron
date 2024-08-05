@@ -1,6 +1,6 @@
 import { type QueryOptions } from '@ckb-lumos/base'
 import initConnection from '../database/chain/ormconfig'
-import { register as registerTxStatusListener } from './tx-status-listener'
+import { longtimeTransaction, register as registerTxStatusListener } from './tx-status-listener'
 import SyncQueue from './sync/queue'
 import logger from '../utils/logger'
 import { ShouldInChildProcess } from '../exceptions'
@@ -21,6 +21,7 @@ export interface WorkerMessage<T = any> {
     | 'address-created'
     | 'indexer-error'
     | 'check-and-save-wallet-address'
+    | 'longTimeHang'
   message: T
 }
 
@@ -90,6 +91,11 @@ export const listener = async ({ type, id, channel, message }: WorkerMessage) =>
       } catch (error) {
         logger.error(`Block Sync Task: queryIndexer:\t`, error)
       }
+      break
+    }
+
+    case 'longTimeHang': {
+      longtimeTransaction()
       break
     }
     default: {

@@ -59,7 +59,7 @@ import startMonitor, { stopMonitor } from '../services/monitor'
 import { migrateCkbData } from '../services/ckb-runner'
 import NodeService from '../services/node'
 import SyncProgressService from '../services/sync-progress'
-import { changeMultisigSyncStatus, resetSyncTaskQueue } from '../block-sync-renderer'
+import { changeMultisigSyncStatus, longtimeTransaction, resetSyncTaskQueue } from '../block-sync-renderer'
 import DataUpdateSubject from '../models/subjects/data-update'
 import CellManagement from './cell-management'
 import { UpdateCellLocalInfo } from '../database/chain/entities/cell-local-info'
@@ -992,6 +992,13 @@ export default class ApiController {
     handle('get-locked-balance', async () => {
       return {
         result: await CellManagement.getLockedBalance(),
+        status: ResponseCode.Success,
+      }
+    })
+
+    handle('long-time-hang', async () => {
+      return {
+        result: longtimeTransaction(),
         status: ResponseCode.Success,
       }
     })

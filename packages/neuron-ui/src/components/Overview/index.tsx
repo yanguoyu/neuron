@@ -34,7 +34,7 @@ import CopyZone from 'widgets/CopyZone'
 import { HIDE_BALANCE } from 'utils/const'
 import TransactionType from 'components/TransactionType'
 import { getLockedBalance } from 'services/remote/cellManage'
-import { getFirstSyncInfo, setCkbNodeDataPath, startSync } from 'services/remote'
+import { getFirstSyncInfo, setCkbNodeDataPath, startSync, testLongTimeTransaction } from 'services/remote'
 import FirstSync from 'widgets/Icons/FirstSync.png'
 import DataPathDialog from 'widgets/DataPathDialog'
 import styles from './overview.module.scss'
@@ -167,6 +167,7 @@ const Overview = () => {
   return (
     <PageContainer head={t('navbar.overview')} notice={pageNotice} isHomePage>
       <div className={styles.topContainer}>
+        <Button onClick={() => testLongTimeTransaction()}>Test Long Time Trasaction</Button>
         <div className={styles.mid}>
           <div className={styles.balance}>
             <span className={styles.balanceTitle}>

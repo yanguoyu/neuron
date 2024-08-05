@@ -167,6 +167,7 @@ type Action =
   | 'update-live-cell-local-info'
   | 'get-locked-balance'
   | 'update-live-cells-lock-status'
+  | 'long-time-hang'
 
 export const remoteApi =
   <P = any, R = any>(action: Action) =>

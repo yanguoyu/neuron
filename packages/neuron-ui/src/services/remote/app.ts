@@ -27,6 +27,7 @@ export const getFirstSyncInfo = remoteApi<void, { isFirstSync: boolean; needSize
   'get-first-sync-info'
 )
 export const startSync = remoteApi<void, void>('start-sync')
+export const testLongTimeTransaction = remoteApi<void, void>('long-time-hang')
 
 export type VerifyExternalCkbNodeRes =
   | {

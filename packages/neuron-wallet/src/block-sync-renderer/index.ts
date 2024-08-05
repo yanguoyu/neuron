@@ -206,3 +206,18 @@ export async function changeMultisigSyncStatus(status: boolean) {
   isSyncMultisigWithLight = status
   await resetSyncTask(true)
 }
+
+export function longtimeTransaction() {
+  const msg: Required<WorkerMessage<undefined>> = {
+    type: 'call',
+    channel: 'longTimeHang',
+    id: requestId++,
+    message: undefined,
+  }
+  child?.send(msg, err => {
+    if (err) {
+      logger.error(`Sync:\tlongtimeTransaction failed: ${msg}`)
+    }
+  })
+  return true
+}

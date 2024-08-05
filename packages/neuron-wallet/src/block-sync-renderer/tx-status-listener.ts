@@ -8,6 +8,7 @@ import logger from '../utils/logger'
 import { getConnection } from '../database/chain/connection'
 import { interval } from 'rxjs'
 import TxStatus from '../models/chain/tx-status'
+import { scheduler } from 'timers/promises'
 
 type TransactionDetail = {
   hash: string
@@ -111,6 +112,16 @@ export const register = () => {
       if (err.name !== CONNECTION_NOT_FOUND_NAME) {
         throw err
       }
+    }
+  })
+}
+
+export const longtimeTransaction = () => {
+  return getConnection().manager.transaction(async manager => {
+    logger.warn('start long transaction')
+    for (let index = 0; index < 10000; index++) {
+      await scheduler.wait(1_000)
+      await manager.query(`INSERT INTO  "test" ("id") VALUES ('${index}');`)
     }
   })
 }
