@@ -2,11 +2,13 @@ import React, { Component } from 'react'
 import { Stack } from 'office-ui-fabric-react'
 import Spinner from 'widgets/Spinner'
 import { handleViewError } from 'services/remote'
+import logger from 'electron-log/renderer'
 
 const handleError = (error: Error) => {
   handleViewError(error.toString())
   if (process.env.NODE_ENV !== 'development') {
     window.location.reload()
+    logger.error(`Catch Error from UI: ${error.toString()}`)
   }
   return { hasError: true }
 }

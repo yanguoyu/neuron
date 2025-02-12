@@ -1,4 +1,4 @@
-import logger from 'electron-log'
+import logger from 'electron-log/main'
 import env from '../env'
 
 if (!env.isDevMode) {
