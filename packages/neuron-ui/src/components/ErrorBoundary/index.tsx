@@ -6,6 +6,8 @@ import { handleViewError } from 'services/remote'
 const handleError = (error: Error) => {
   handleViewError(error.toString())
   if (process.env.NODE_ENV !== 'development') {
+    // eslint-disable-next-line no-console
+    console.log(error)
     window.location.reload()
   }
   return { hasError: true }
