@@ -16,12 +16,14 @@ const WithdrawDialog = ({
   record,
   tipDao,
   currentEpoch,
+  canSign = true,
 }: {
   onDismiss: () => void
   onSubmit: () => void
   record: State.NervosDAORecord
   tipDao?: string
   currentEpoch: string
+  canSign?: boolean
 }) => {
   const [t] = useTranslation()
   const [depositEpoch, setDepositEpoch] = useState('')
@@ -73,7 +75,7 @@ const WithdrawDialog = ({
     (Number(currentEpochInfo.number) + Number(currentEpochInfo.index) / Number(currentEpochInfo.length))
   ).toFixed(1)
   const message =
-    epochs >= 0 ? (
+    epochs > 5 ? (
       <>
         <Attention />
         {t('nervos-dao.notice-wait-time', {
@@ -104,7 +106,7 @@ const WithdrawDialog = ({
       onCancel={onDismiss}
       onConfirm={onSubmit}
       cancelText={t('nervos-dao-detail.cancel')}
-      confirmText={t('nervos-dao-detail.next')}
+      confirmText={canSign ? t('nervos-dao-detail.next') : t('nervos-dao-detail.export')}
     >
       <>
         <div className={styles.depositAndCompensation}>

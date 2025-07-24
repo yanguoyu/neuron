@@ -1,3 +1,5 @@
+import { t } from 'i18next'
+import { dialog } from 'electron'
 import { serializeWitnessArgs } from '../utils/serialization'
 import { scriptToAddress } from '../utils/scriptAndAddress'
 import { TargetOutput, TransactionGenerator, TransactionPersistor } from './tx'
@@ -30,6 +32,7 @@ import {
   NoMatchAddressForSign,
   SignTransactionFailed,
   TransactionIsNotCommittedYet,
+  UnrecognizedLockScript,
 } from '../exceptions'
 import AssetAccountInfo from '../models/asset-account-info'
 import MultisigConfigModel from '../models/multisig-config'
@@ -59,7 +62,7 @@ interface PathAndPrivateKey {
 }
 
 export default class TransactionSender {
-  static MULTI_SIGN_ARGS_LENGTH = 58
+  static MULTISIGN_ARGS_LENGTH = 58
 
   private walletService: WalletService
 
@@ -145,7 +148,7 @@ export default class TransactionSender {
 
     // Only one multi sign input now.
     const isMultisig =
-      tx.inputs.length === 1 && tx.inputs[0].lock!.args.length === TransactionSender.MULTI_SIGN_ARGS_LENGTH
+      tx.inputs.length === 1 && tx.inputs[0].lock!.args.length === TransactionSender.MULTISIGN_ARGS_LENGTH
 
     const addressInfos = await this.getAddressInfos(walletID)
     const multiSignBlake160s = isMultisig
@@ -160,7 +163,7 @@ export default class TransactionSender {
     const pathAndPrivateKeys = this.getPrivateKeys(wallet, paths, password)
     const findPrivateKey = (args: string) => {
       let path: string | undefined
-      if (args.length === TransactionSender.MULTI_SIGN_ARGS_LENGTH) {
+      if (args.length === TransactionSender.MULTISIGN_ARGS_LENGTH) {
         path = multiSignBlake160s.find(i => args.slice(0, 42) === i.multiSignBlake160)!.path
       } else if (args.length === 42) {
         path = addressInfos.find(i => i.blake160 === args)!.path
@@ -198,7 +201,40 @@ export default class TransactionSender {
       // A 65-byte empty signature used as placeholder
       witnessesArgs[0].witnessArgs.setEmptyLock()
 
-      const privateKey = findPrivateKey(witnessesArgs[0].lockArgs)
+      let privateKey = ''
+      try {
+        privateKey = findPrivateKey(witnessesArgs[0].lockArgs)
+      } catch (error) {
+        const BLOCK_UNRECOGNIZED = 0
+        const IGNORE_UNRECOGNIZED_AND_CONTINUE = 1
+
+        let message = t('messageBox.unrecognized-lock-script.message')
+        let buttons = [
+          t('messageBox.unrecognized-lock-script.buttons.cancel'),
+          t('messageBox.unrecognized-lock-script.buttons.ignore'),
+        ]
+
+        const input = tx.inputs.find(input => input.lockHash === lockHash)
+        if (input && input.lock && SystemScriptInfo.isMultiSignCodeHash(input.lock.codeHash)) {
+          message = t('messageBox.unrecognized-multisig-transaction.message')
+          buttons = [t('messageBox.unrecognized-multisig-transaction.buttons.cancel')]
+        }
+
+        const res = await dialog.showMessageBox({
+          type: 'warning',
+          message,
+          buttons,
+          defaultId: BLOCK_UNRECOGNIZED,
+          cancelId: IGNORE_UNRECOGNIZED_AND_CONTINUE,
+        })
+        if (res.response === IGNORE_UNRECOGNIZED_AND_CONTINUE) {
+          continue
+        }
+        if (res.response === BLOCK_UNRECOGNIZED) {
+          throw new UnrecognizedLockScript(message)
+        }
+        throw error
+      }
 
       const serializedWitnesses: (WitnessArgs | string)[] = witnessesArgs.map((value: SignInfo, index: number) => {
         const args = value.witnessArgs
@@ -330,6 +366,21 @@ export default class TransactionSender {
     for (const lockHash of lockHashes) {
       const multisigConfig = multisigConfigMap[lockHash]
       if (!multisigConfig) {
+        const BLOCK_UNRECOGNIZED = 0
+        const IGNORE_UNRECOGNIZED_AND_CONTINUE = 1
+        const res = await dialog.showMessageBox({
+          type: 'warning',
+          message: t('messageBox.unrecognized-lock-script.message'),
+          buttons: [
+            t('messageBox.unrecognized-lock-script.buttons.cancel'),
+            t('messageBox.unrecognized-lock-script.buttons.ignore'),
+          ],
+          defaultId: BLOCK_UNRECOGNIZED,
+          cancelId: IGNORE_UNRECOGNIZED_AND_CONTINUE,
+        })
+        if (res.response === IGNORE_UNRECOGNIZED_AND_CONTINUE) {
+          continue
+        }
         throw new MultisigConfigNeedError()
       }
       const [privateKey, blake160] = findPrivateKeyAndBlake160(multisigConfig.blake160s, tx.signatures?.[lockHash])
@@ -525,7 +576,7 @@ export default class TransactionSender {
       walletID: '',
       targetOutputs,
       fee: '0',
-      feeRate: '1000',
+      feeRate: '2000',
       multisigConfig,
     })
 
@@ -546,7 +597,8 @@ export default class TransactionSender {
         multisigConfig.blake160s,
         multisigConfig.r,
         multisigConfig.m,
-        multisigConfig.n
+        multisigConfig.n,
+        multisigConfig.lockCodeHash
       )
       const multisigAddresses = scriptToAddress(lockScript, NetworksService.getInstance().isMainnet())
       const tx: Transaction = await TransactionGenerator.generateTx({
@@ -554,11 +606,11 @@ export default class TransactionSender {
         targetOutputs,
         changeAddress: multisigAddresses,
         fee: '0',
-        feeRate: '1000',
+        feeRate: '2000',
         lockClass: {
           lockArgs: [lockScript.args],
-          codeHash: SystemScriptInfo.MULTI_SIGN_CODE_HASH,
-          hashType: SystemScriptInfo.MULTI_SIGN_HASH_TYPE,
+          codeHash: lockScript.codeHash,
+          hashType: lockScript.hashType,
         },
         multisigConfig,
       })
@@ -666,6 +718,39 @@ export default class TransactionSender {
     return tx
   }
 
+  public generateMultisigDepositTx = async (
+    capacity: string,
+    fee: string = '0',
+    feeRate: string = '0',
+    multisigConfig: MultisigConfigModel
+  ): Promise<Transaction> => {
+    const lockScript = Multisig.getMultisigScript(
+      multisigConfig.blake160s,
+      multisigConfig.r,
+      multisigConfig.m,
+      multisigConfig.n,
+      multisigConfig.lockCodeHash
+    )
+    const multisigAddresses = scriptToAddress(lockScript, NetworksService.getInstance().isMainnet())
+
+    const tx = await TransactionGenerator.generateDepositTx(
+      '',
+      capacity,
+      multisigAddresses,
+      multisigAddresses,
+      fee,
+      feeRate,
+      {
+        lockArgs: [lockScript.args],
+        codeHash: lockScript.codeHash,
+        hashType: lockScript.hashType,
+      },
+      multisigConfig
+    )
+
+    return tx
+  }
+
   public startWithdrawFromDao = async (
     walletID: string,
     outPoint: OutPoint,
@@ -704,12 +789,61 @@ export default class TransactionSender {
     return tx
   }
 
+  public startWithdrawFromMultisigDao = async (
+    outPoint: OutPoint,
+    fee: string = '0',
+    feeRate: string = '0',
+    multisigConfig: MultisigConfigModel
+  ): Promise<Transaction> => {
+    const lockScript = Multisig.getMultisigScript(
+      multisigConfig.blake160s,
+      multisigConfig.r,
+      multisigConfig.m,
+      multisigConfig.n,
+      multisigConfig.lockCodeHash
+    )
+    const multisigAddresses = scriptToAddress(lockScript, NetworksService.getInstance().isMainnet())
+
+    const currentNetwork = NetworksService.getInstance().getCurrent()
+    const rpcService = new RpcService(currentNetwork.remote, currentNetwork.type)
+    const depositOutput = await CellsService.getLiveCell(outPoint)
+    if (!depositOutput) {
+      throw new CellIsNotYetLive()
+    }
+    const prevTx = await rpcService.getTransaction(outPoint.txHash)
+    if (!prevTx || !prevTx.txStatus.isCommitted()) {
+      throw new TransactionIsNotCommittedYet()
+    }
+
+    const depositBlockHeader = await rpcService.getHeader(prevTx.txStatus.blockHash!)
+
+    const tx: Transaction = await TransactionGenerator.startWithdrawFromDao(
+      '',
+      outPoint,
+      depositOutput,
+      depositBlockHeader!.number,
+      depositBlockHeader!.hash,
+      multisigAddresses,
+      fee,
+      feeRate,
+      {
+        lockArgs: [lockScript.args],
+        codeHash: lockScript.codeHash,
+        hashType: lockScript.hashType,
+      },
+      multisigConfig
+    )
+
+    return tx
+  }
+
   public withdrawFromDao = async (
     walletID: string,
     depositOutPoint: OutPoint,
     withdrawingOutPoint: OutPoint,
     fee: string = '0',
-    feeRate: string = '0'
+    feeRate: string = '0',
+    multisigConfig?: MultisigConfigModel
   ): Promise<Transaction> => {
     const DAO_LOCK_PERIOD_EPOCHS = BigInt(180)
 
@@ -729,7 +863,9 @@ export default class TransactionSender {
       throw new TransactionIsNotCommittedYet()
     }
 
-    const secpCellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    const cellDep = multisigConfig
+      ? await SystemScriptInfo.getInstance().getMultiSignCellDep(multisigConfig.lockCodeHash)
+      : await SystemScriptInfo.getInstance().getSecpCellDep()
     const daoCellDep = await SystemScriptInfo.getInstance().getDaoCellDep()
 
     const content = withdrawOutput.daoData
@@ -769,16 +905,27 @@ export default class TransactionSender {
 
     const outputCapacity: bigint = await this.calculateDaoMaximumWithdraw(depositOutPoint, withdrawBlockHeader.hash)
 
-    const wallet = WalletService.getInstance().get(walletID)
-    const address = await wallet.getNextAddress()
-    const blake160 = AddressParser.toBlake160(address!.address)
-
-    const output: Output = new Output(
-      outputCapacity.toString(),
-      new Script(SystemScriptInfo.SECP_CODE_HASH, blake160, SystemScriptInfo.SECP_HASH_TYPE),
-      undefined,
-      '0x'
-    )
+    let output: Output
+    if (multisigConfig) {
+      const lockScript = Multisig.getMultisigScript(
+        multisigConfig.blake160s,
+        multisigConfig.r,
+        multisigConfig.m,
+        multisigConfig.n,
+        multisigConfig.lockCodeHash
+      )
+      output = new Output(outputCapacity.toString(), lockScript, undefined, '0x')
+    } else {
+      const wallet = WalletService.getInstance().get(walletID)
+      const address = await wallet.getNextAddress()
+      const blake160 = AddressParser.toBlake160(address!.address)
+      output = new Output(
+        outputCapacity.toString(),
+        new Script(SystemScriptInfo.SECP_CODE_HASH, blake160, SystemScriptInfo.SECP_HASH_TYPE),
+        undefined,
+        '0x'
+      )
+    }
 
     const outputs: Output[] = [output]
 
@@ -789,10 +936,13 @@ export default class TransactionSender {
       withdrawOutput.lock
     )
 
-    const withdrawWitnessArgs: WitnessArgs = new WitnessArgs(WitnessArgs.EMPTY_LOCK, '0x0000000000000000')
+    const withdrawWitnessArgs: WitnessArgs = new WitnessArgs(
+      multisigConfig ? '' : WitnessArgs.EMPTY_LOCK,
+      '0x0000000000000000'
+    )
     const tx: Transaction = Transaction.fromObject({
       version: '0',
-      cellDeps: [secpCellDep, daoCellDep],
+      cellDeps: [cellDep, daoCellDep],
       headerDeps: [depositBlockHeader.hash, withdrawBlockHeader.hash],
       inputs: [input],
       outputs,
@@ -832,6 +982,39 @@ export default class TransactionSender {
       isBalanceReserved,
       fee,
       feeRate
+    )
+
+    return tx
+  }
+
+  public generateMultisigDepositAllTx = async (
+    isBalanceReserved = true,
+    fee: string = '0',
+    feeRate: string = '0',
+    multisigConfig: MultisigConfigModel
+  ): Promise<Transaction> => {
+    const lockScript = Multisig.getMultisigScript(
+      multisigConfig.blake160s,
+      multisigConfig.r,
+      multisigConfig.m,
+      multisigConfig.n,
+      multisigConfig.lockCodeHash
+    )
+    const multisigAddresses = scriptToAddress(lockScript, NetworksService.getInstance().isMainnet())
+
+    const tx = await TransactionGenerator.generateDepositAllTx(
+      '',
+      multisigAddresses,
+      multisigAddresses,
+      isBalanceReserved,
+      fee,
+      feeRate,
+      {
+        lockArgs: [lockScript.args],
+        codeHash: lockScript.codeHash,
+        hashType: lockScript.hashType,
+      },
+      multisigConfig
     )
 
     return tx

@@ -228,6 +228,20 @@ export default {
           cancel: 'Annuler',
         },
       },
+      'unrecognized-lock-script': {
+        message: 'Un script de verrouillage non reconnu a été trouvé dans cette transaction, veuillez vérifier.',
+        buttons: {
+          cancel: 'Annuler',
+          ignore: 'Ignorer et continuer',
+        },
+      },
+      'unrecognized-multisig-transaction': {
+        message:
+          "Il s'agit d'une transaction multisignature. Veuillez l'approuver depuis l'adresse multisignature en utilisant le portefeuille approprié.",
+        buttons: {
+          cancel: 'Annuler',
+        },
+      },
     },
     prompt: {
       password: {

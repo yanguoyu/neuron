@@ -19,6 +19,7 @@ import fs from 'fs'
 import env from '../env'
 import { showWindow } from './app/show-window'
 import CommonUtils from '../utils/common'
+import { CKB_NODE_DATA_SIZE_BUFFER_RATIO } from '../utils/const'
 import { NetworkType, Network } from '../models/network'
 import { ConnectionStatusSubject } from '../models/subjects/node'
 import NetworksService from '../services/networks'
@@ -283,6 +284,11 @@ export default class ApiController {
       if (env.isDevMode) {
         console.error(error)
       }
+      try {
+        logger.error(JSON.parse(error))
+      } catch (e) {
+        logger.error(error)
+      }
     })
 
     handle('set-locale', async (_, locale: Locale) => {
@@ -443,6 +449,14 @@ export default class ApiController {
       return this.#walletsController.getAllAddresses(id)
     })
 
+    handle('get-private-key-by-address', async (_, { walletID, password, address }) => {
+      return this.#walletsController.getPrivateKeyByAddress({
+        walletID,
+        password,
+        address,
+      })
+    })
+
     handle(
       'update-address-description',
       async (_, params: { walletID: string; address: string; description: string }) => {
@@ -567,10 +581,28 @@ export default class ApiController {
       return this.#daoController.getDaoCells(params)
     })
 
+    handle('get-multisig-dao-data', async (_, params: { multisigConfig: MultisigConfigModel }) => {
+      return this.#daoController.getMultisigDaoCells({
+        multisigConfig: MultisigConfigModel.fromObject(params.multisigConfig),
+      })
+    })
+
     handle(
       'generate-dao-deposit-tx',
       async (_, params: { walletID: string; capacity: string; fee: string; feeRate: string }) => {
         return this.#daoController.generateDepositTx(params)
+      }
+    )
+
+    handle(
+      'generate-multisig-dao-deposit-tx',
+      async (_, params: { capacity: string; fee: string; feeRate: string; multisigConfig: MultisigConfigModel }) => {
+        return this.#daoController.generateMultisigDepositTx({
+          capacity: params.capacity,
+          fee: params.fee,
+          feeRate: params.feeRate,
+          multisigConfig: MultisigConfigModel.fromObject(params.multisigConfig),
+        })
       }
     )
 
@@ -582,9 +614,36 @@ export default class ApiController {
     )
 
     handle(
+      'generate-multisig-dao-deposit-all-tx',
+      async (
+        _,
+        params: { isBalanceReserved: boolean; fee: string; feeRate: string; multisigConfig: MultisigConfigModel }
+      ) => {
+        return this.#daoController.generateMultisigDepositAllTx({
+          isBalanceReserved: params.isBalanceReserved,
+          fee: params.fee,
+          feeRate: params.feeRate,
+          multisigConfig: MultisigConfigModel.fromObject(params.multisigConfig),
+        })
+      }
+    )
+
+    handle(
       'start-withdraw-from-dao',
       async (_, params: { walletID: string; outPoint: OutPoint; fee: string; feeRate: string }) => {
         return this.#daoController.startWithdrawFromDao(params)
+      }
+    )
+
+    handle(
+      'start-withdraw-from-multisig-dao',
+      async (_, params: { outPoint: OutPoint; fee: string; feeRate: string; multisigConfig: MultisigConfigModel }) => {
+        return this.#daoController.startWithdrawFromMultisigDao({
+          outPoint: params.outPoint,
+          fee: params.fee,
+          feeRate: params.feeRate,
+          multisigConfig: MultisigConfigModel.fromObject(params.multisigConfig),
+        })
       }
     )
 
@@ -601,6 +660,28 @@ export default class ApiController {
         }
       ) => {
         return this.#daoController.withdrawFromDao(params)
+      }
+    )
+
+    handle(
+      'withdraw-from-multisig-dao',
+      async (
+        _,
+        params: {
+          depositOutPoint: OutPoint
+          withdrawingOutPoint: OutPoint
+          fee: string
+          feeRate: string
+          multisigConfig: MultisigConfigModel
+        }
+      ) => {
+        return this.#daoController.withdrawFromMultisigDao({
+          depositOutPoint: params.depositOutPoint,
+          withdrawingOutPoint: params.withdrawingOutPoint,
+          fee: params.fee,
+          feeRate: params.feeRate,
+          multisigConfig: MultisigConfigModel.fromObject(params.multisigConfig),
+        })
       }
     )
 
@@ -695,7 +776,7 @@ export default class ApiController {
         status: ResponseCode.Success,
         result: {
           isFirstSync: SettingsService.getInstance().isFirstSync && currentNetwork.type === NetworkType.Default,
-          needSize: Math.ceil(+process.env.CKB_NODE_DATA_SIZE! * 1.2),
+          needSize: Math.ceil(+process.env.CKB_NODE_DATA_SIZE! * CKB_NODE_DATA_SIZE_BUFFER_RATIO),
           ckbNodeDataPath: SettingsService.getInstance().getNodeDataPath(),
         },
       }
@@ -706,6 +787,13 @@ export default class ApiController {
       this.#networksController.activate(this.#networksController.currentID().result)
       return {
         status: ResponseCode.Success,
+      }
+    })
+
+    handle('get-ckb-node-data-need-size', () => {
+      return {
+        status: ResponseCode.Success,
+        result: Math.ceil(+process.env.CKB_NODE_DATA_SIZE! * CKB_NODE_DATA_SIZE_BUFFER_RATIO),
       }
     })
 
@@ -837,13 +925,36 @@ export default class ApiController {
       return this.#sudtController.getSUDTTokenInfo(params)
     })
 
+    handle(
+      'get-sudt-token-info-and-balance',
+      async (_, params: { tokenID: string; holder: string; outpoint?: CKBComponents.OutPoint }) => {
+        return this.#sudtController.getUDTTokenInfoAndBalance(params)
+      }
+    )
+
+    handle(
+      'generate-recycle-udt-cell-tx',
+      async (
+        _,
+        params: {
+          walletId: string
+          holder: string
+          tokenID: string
+          receiver: string
+          outpoint?: CKBComponents.OutPoint
+        }
+      ) => {
+        return this.#assetAccountController.generateRecycleUDTCellTx(params)
+      }
+    )
+
     handle('generate-destroy-asset-account-tx', async (_, params: { walletID: string; id: number }) => {
       return this.#assetAccountController.destroyAssetAccount(params)
     })
 
     // Hardware wallet
-    handle('connect-device', async (_, deviceInfo: DeviceInfo) => {
-      await this.#hardwareController.connectDevice(deviceInfo)
+    handle('connect-device', async (_, params: DeviceInfo & { walletID?: string }) => {
+      await this.#hardwareController.connectDevice(params)
     })
 
     handle('detect-device', async (_, model: Pick<DeviceInfo, 'manufacturer' | 'product'>) => {
@@ -925,6 +1036,10 @@ export default class ApiController {
 
     handle('get-multisig-balances', async (_, params) => {
       return this.#multisigController.getMultisigBalances(params)
+    })
+
+    handle('get-multisig-dao-balances', async (_, params) => {
+      return this.#multisigController.getMultisigDAOBalances(params)
     })
 
     handle('load-multisig-tx-json', async (_, fullPayload) => {

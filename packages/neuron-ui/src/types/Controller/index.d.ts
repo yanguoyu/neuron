@@ -185,6 +185,12 @@ declare namespace Controller {
     message: string
   }
 
+  interface GetPrivateKeyParams {
+    walletID: string
+    address?: string
+    password: string
+  }
+
   interface VerifyMessageParams {
     address: string
     signature: string
@@ -216,7 +222,7 @@ declare namespace Controller {
     interface Response {
       cellDep: any
       codeHash: string
-      hashType: 'data' | 'type'
+      hashType: 'data' | 'type' | 'data1' | 'data2'
     }
   }
   interface SUDTAccount {
@@ -348,6 +354,35 @@ declare namespace Controller {
       tokenName: string
       decimal: string
     }
+  }
+
+  namespace GetUDTTokenInfoAndBalance {
+    interface Params {
+      tokenID: string
+      holder: string
+      outpoint?: CKBComponents.OutPoint
+    }
+    interface Response {
+      tokenID: string
+      symbol: string
+      tokenName: string
+      decimal: string
+      balance: string
+      capacity: string
+    }
+  }
+
+  namespace GenerateRecycleUDTCellTransaction {
+    type Tx = any
+    interface Params {
+      walletId: string
+      holder: string
+      tokenID: string
+      receiver: string
+      outpoint?: CKBComponents.OutPoint
+    }
+
+    type Response = Tx
   }
 
   namespace CreateChequeTransaction {

@@ -210,6 +210,19 @@ export default {
           cancel: '取消',
         },
       },
+      'unrecognized-lock-script': {
+        message: '在此交易中發現了一個未識別的lock script，請檢查。',
+        buttons: {
+          cancel: '取消',
+          ignore: '忽略並繼續',
+        },
+      },
+      'unrecognized-multisig-transaction': {
+        message: '這是一筆多簽交易。請使用對應的錢包在多簽地址中批准該交易。',
+        buttons: {
+          cancel: '取消',
+        },
+      },
     },
     prompt: {
       password: {

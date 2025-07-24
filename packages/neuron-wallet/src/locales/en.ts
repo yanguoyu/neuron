@@ -137,7 +137,7 @@ export default {
       'multisig-lock-hash-mismatch': 'The current multisig address does not match the transaction to be approved',
       'sudt-acp-have-data': 'The destroying sUDT acp account have amount',
       'no-match-address-for-sign': 'Not found matched address',
-      'target-lock-error': 'CKB asset account can only transfer to sepe256k1 or acp address',
+      'target-lock-error': 'CKB asset account can only transfer to secp256k1 or acp address',
       'no-exist-ckb-node-data':
         '{{path}} has no CKB Node config and storage, press confirm to synchronize from scratch',
       'light-client-sudt-acp-error': "Light client mode doesn't support sending assets to other's asset account",
@@ -221,6 +221,20 @@ export default {
           'Migrate failed, press ok to delete old data and synchronize from scratch, or click cancel to migrate later by relanuch Neuron. Migrate fail reason: {{ reason }}',
         buttons: {
           ok: 'OK',
+          cancel: 'Cancel',
+        },
+      },
+      'unrecognized-lock-script': {
+        message: 'An unrecognized lock script was found in this transaction, please check it.',
+        buttons: {
+          cancel: 'Cancel',
+          ignore: 'Ignore and continue',
+        },
+      },
+      'unrecognized-multisig-transaction': {
+        message:
+          'This is a multisig transaction. Please approve it from the multisig address using the appropriate wallet. ',
+        buttons: {
           cancel: 'Cancel',
         },
       },

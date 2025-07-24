@@ -704,4 +704,24 @@ export default class WalletsController {
         }
       })
   }
+
+  public async getPrivateKeyByAddress({
+    walletID,
+    password,
+    address,
+  }: {
+    walletID: string
+    password: string
+    address?: string
+  }) {
+    const privateKey = await AddressService.getPrivateKeyByAddress({
+      walletID,
+      password,
+      address,
+    })
+    return {
+      status: ResponseCode.Success,
+      result: privateKey,
+    }
+  }
 }

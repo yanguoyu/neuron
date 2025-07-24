@@ -138,7 +138,7 @@ export default {
         'La dirección multifirma actual no coincide con la transacción que se va a aprobar',
       'sudt-acp-have-data': 'La cuenta ACP de sUDT destruida tiene saldo',
       'no-match-address-for-sign': 'No se encontró una dirección coincidente',
-      'target-lock-error': 'La cuenta de activos CKB solo puede transferirse a una dirección sepe256k1 o acp',
+      'target-lock-error': 'La cuenta de activos CKB solo puede transferirse a una dirección secp256k1 o acp',
       'no-exist-ckb-node-data':
         '{{path}} no tiene configuración y almacenamiento de nodo CKB, presiona confirmar para sincronizar desde cero',
       'light-client-sudt-acp-error':
@@ -224,6 +224,20 @@ export default {
           'La migración falló, presione Aceptar para eliminar los datos antiguos y sincronizar desde cero, o haga clic en Cancelar para migrar más tarde al reiniciar Neuron. Razón del fallo de la migración: {{ reason }}',
         buttons: {
           ok: 'Aceptar',
+          cancel: 'Cancelar',
+        },
+      },
+      'unrecognized-lock-script': {
+        message: 'Se encontró un script de bloqueo no reconocido en esta transacción, por favor verifíquelo.',
+        buttons: {
+          cancel: 'Cancelar',
+          ignore: 'Ignorar y continuar',
+        },
+      },
+      'unrecognized-multisig-transaction': {
+        message:
+          'Esta es una transacción multisignatura. Por favor, apróbala desde la dirección multisignatura utilizando la billetera correspondiente.',
+        buttons: {
           cancel: 'Cancelar',
         },
       },

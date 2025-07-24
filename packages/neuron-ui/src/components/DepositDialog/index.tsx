@@ -1,10 +1,11 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { Slider } from 'office-ui-fabric-react'
 import { Trans, useTranslation } from 'react-i18next'
 import TextField from 'widgets/TextField'
 import Spinner, { SpinnerSize } from 'widgets/Spinner'
-import { openExternal } from 'services/remote'
+import { openExternal, MultisigConfig } from 'services/remote'
 import { localNumberFormatter, shannonToCKBFormatter } from 'utils'
+import getMultisigSignStatus from 'utils/getMultisigSignStatus'
 import { Attention, Success } from 'widgets/Icons/icon'
 import Dialog from 'widgets/Dialog'
 import Tooltip from 'widgets/Tooltip'
@@ -30,9 +31,10 @@ interface DepositDialogProps {
   isDepositing: boolean
   isTxGenerated: boolean
   suggestFeeRate: number
-  walletID: string
+  wallet: State.Wallet
   globalAPC: number
   onDepositSuccess: () => void
+  multisigConfig?: MultisigConfig
 }
 
 const RfcLink = React.memo(() => (
@@ -50,7 +52,7 @@ const RfcLink = React.memo(() => (
 ))
 
 const DepositDialog = ({
-  walletID,
+  wallet,
   balance,
   show,
   fee,
@@ -60,23 +62,33 @@ const DepositDialog = ({
   suggestFeeRate,
   globalAPC,
   onDepositSuccess,
+  multisigConfig,
 }: DepositDialogProps) => {
   const [t, { language }] = useTranslation()
   const disabled = !isTxGenerated
+  const [isTyping, setIsTyping] = useState(false)
   const { isBalanceReserved, onIsBalanceReservedChange, setIsBalanceReserved } = useBalanceReserved()
   const { depositValue, onChangeDepositValue, slidePercent, onSliderChange, resetDepositValue } = useDepositValue(
     balance,
     show
   )
   const { errorMessage, maxDepositValue } = useGenerateDaoDepositTx({
-    walletID,
+    walletID: wallet.id,
     isBalanceReserved,
     depositValue,
     suggestFeeRate,
     showDepositDialog: show,
     slidePercent,
+    multisigConfig,
   })
-  const onConfirm = useOnDepositDialogSubmit({ onDepositSuccess, walletID })
+
+  const canSign = useMemo(() => {
+    if (!multisigConfig) return true
+    const multisigSignStatus = getMultisigSignStatus({ multisigConfig, addresses: wallet.addresses })
+    return multisigSignStatus.canSign
+  }, [multisigConfig, wallet.addresses])
+
+  const onConfirm = useOnDepositDialogSubmit({ onDepositSuccess, wallet, multisigConfig })
   const onCancel = useOnDepositDialogCancel({ onCloseDepositDialog, resetDepositValue, setIsBalanceReserved })
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -97,6 +109,16 @@ const DepositDialog = ({
 
   const isChinese = language === 'zh' || language.startsWith('zh-')
 
+  const handleBlur = useCallback(() => {
+    setIsTyping(false)
+  }, [setIsTyping])
+
+  const handleFocus = useCallback(() => {
+    setIsTyping(true)
+  }, [setIsTyping])
+
+  const inputValue = useMemo(() => maxDepositValue ?? depositValue, [maxDepositValue, depositValue])
+
   return (
     <Dialog
       show={show}
@@ -105,7 +127,7 @@ const DepositDialog = ({
       onCancel={onCancel}
       onConfirm={onConfirm}
       cancelText={t('nervos-dao.cancel')}
-      confirmText={t('nervos-dao.proceed')}
+      confirmText={canSign ? t('nervos-dao.proceed') : t('nervos-dao-detail.export')}
       className={styles.container}
     >
       {isDepositing ? (
@@ -140,8 +162,10 @@ const DepositDialog = ({
             className={styles.depositValue}
             width="100%"
             field="depositValue"
-            value={localNumberFormatter(maxDepositValue ?? depositValue)}
+            value={isTyping ? inputValue : localNumberFormatter(inputValue)}
             onChange={onChangeDepositValue}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
             suffix="CKB"
             required
             error={errorMessage}

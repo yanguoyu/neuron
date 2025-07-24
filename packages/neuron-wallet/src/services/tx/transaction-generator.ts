@@ -190,8 +190,8 @@ export class TransactionGenerator {
     enableUseSentCell?: boolean
   }): Promise<Transaction> => {
     let cellDep: CellDep
-    if (lockClass.codeHash === SystemScriptInfo.MULTI_SIGN_CODE_HASH) {
-      cellDep = await SystemScriptInfo.getInstance().getMultiSignCellDep()
+    if (SystemScriptInfo.isMultiSignCodeHash(lockClass.codeHash)) {
+      cellDep = await SystemScriptInfo.getInstance().getMultiSignCellDep(lockClass.codeHash)
     } else {
       cellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
     }
@@ -212,7 +212,10 @@ export class TransactionGenerator {
       if (date) {
         const blake160 = lockScript.args
         const minutes: number = +((BigInt(date) - BigInt(tipHeaderTimestamp)) / BigInt(1000 * 60)).toString()
-        const script = SystemScriptInfo.generateMultiSignScript(Multisig.args(blake160, +minutes, tipHeaderEpoch))
+        const script = SystemScriptInfo.generateMultiSignScript(
+          Multisig.args(blake160, +minutes, tipHeaderEpoch),
+          SystemScriptInfo.LEGACY_MULTISIG_CODE_HASH
+        )
         output.setLock(script)
         output.setMultiSignBlake160(script.args.slice(0, 42))
       }
@@ -292,7 +295,7 @@ export class TransactionGenerator {
   }): Promise<Transaction> => {
     let cellDep: CellDep
     if (multisigConfig) {
-      cellDep = await SystemScriptInfo.getInstance().getMultiSignCellDep()
+      cellDep = await SystemScriptInfo.getInstance().getMultiSignCellDep(multisigConfig.lockCodeHash)
     } else {
       cellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
     }
@@ -308,7 +311,13 @@ export class TransactionGenerator {
       walletID,
       multisigConfig
         ? Script.fromSDK(
-            Multisig.getMultisigScript(multisigConfig.blake160s, multisigConfig.r, multisigConfig.m, multisigConfig.n)
+            Multisig.getMultisigScript(
+              multisigConfig.blake160s,
+              multisigConfig.r,
+              multisigConfig.m,
+              multisigConfig.n,
+              multisigConfig.lockCodeHash
+            )
           )
         : undefined,
       consumeOutPoints,
@@ -333,7 +342,8 @@ export class TransactionGenerator {
         const blake160 = lockScript.args
         const minutes: number = +((BigInt(date) - BigInt(tipHeaderTimestamp)) / BigInt(1000 * 60)).toString()
         const script: Script = SystemScriptInfo.generateMultiSignScript(
-          Multisig.args(blake160, minutes, tipHeaderEpoch)
+          Multisig.args(blake160, minutes, tipHeaderEpoch),
+          SystemScriptInfo.LEGACY_MULTISIG_CODE_HASH
         )
         output.setLock(script)
         output.setMultiSignBlake160(script.args.slice(0, 42))
@@ -408,26 +418,34 @@ export class TransactionGenerator {
     receiveAddress: string,
     changeAddress: string,
     fee: string = '0',
-    feeRate: string = '0'
+    feeRate: string = '0',
+    lockClass = {
+      lockArgs: [''],
+      codeHash: SystemScriptInfo.SECP_CODE_HASH,
+      hashType: ScriptHashType.Type,
+    },
+    multisigConfig?: MultisigConfigModel
   ): Promise<Transaction> => {
-    const secpCellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    let cellDep: CellDep
+    if (SystemScriptInfo.isMultiSignCodeHash(lockClass.codeHash)) {
+      cellDep = await SystemScriptInfo.getInstance().getMultiSignCellDep(lockClass.codeHash)
+    } else {
+      cellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    }
     const daoCellDep = await SystemScriptInfo.getInstance().getDaoCellDep()
-    const blake160: string = AddressParser.toBlake160(receiveAddress)
+
+    const lockScript = AddressParser.parse(receiveAddress)
 
     const capacityInt: bigint = BigInt(capacity)
 
-    const output: Output = new Output(
-      capacity,
-      SystemScriptInfo.generateSecpScript(blake160),
-      SystemScriptInfo.generateDaoScript('0x')
-    )
+    const output: Output = new Output(capacity, lockScript, SystemScriptInfo.generateDaoScript('0x'))
     output.setDaoData('0x0000000000000000')
 
     const outputs: Output[] = [output]
 
     const tx = Transaction.fromObject({
       version: '0',
-      cellDeps: [secpCellDep, daoCellDep],
+      cellDeps: [cellDep, daoCellDep],
       headerDeps: [],
       inputs: [],
       outputs,
@@ -444,18 +462,21 @@ export class TransactionGenerator {
       feeRate,
       baseSize,
       TransactionGenerator.CHANGE_OUTPUT_SIZE,
-      TransactionGenerator.CHANGE_OUTPUT_DATA_SIZE
+      TransactionGenerator.CHANGE_OUTPUT_DATA_SIZE,
+      undefined,
+      lockClass,
+      multisigConfig ? [multisigConfig] : []
     )
     const finalFeeInt = BigInt(finalFee)
     tx.inputs = inputs
 
     // change
     if (hasChangeOutput) {
-      const changeBlake160: string = AddressParser.toBlake160(changeAddress)
+      const lockScript = AddressParser.parse(changeAddress)
 
       const changeCapacity = BigInt(capacities) - capacityInt - finalFeeInt
 
-      const changeOutput = new Output(changeCapacity.toString(), SystemScriptInfo.generateSecpScript(changeBlake160))
+      const changeOutput = new Output(changeCapacity.toString(), lockScript)
 
       tx.addOutput(changeOutput)
     }
@@ -471,16 +492,38 @@ export class TransactionGenerator {
     changeAddress: string,
     isBalanceReserved = true,
     fee: string = '0',
-    feeRate: string = '0'
+    feeRate: string = '0',
+    lockClass = {
+      lockArgs: [''],
+      codeHash: SystemScriptInfo.SECP_CODE_HASH,
+      hashType: ScriptHashType.Type,
+    },
+    multisigConfig?: MultisigConfigModel
   ): Promise<Transaction> => {
-    const secpCellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    let cellDep: CellDep
+    if (SystemScriptInfo.isMultiSignCodeHash(lockClass.codeHash)) {
+      cellDep = await SystemScriptInfo.getInstance().getMultiSignCellDep(lockClass.codeHash)
+    } else {
+      cellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    }
     const daoCellDep = await SystemScriptInfo.getInstance().getDaoCellDep()
 
     const feeInt = BigInt(fee)
     const feeRateInt = BigInt(feeRate)
     const mode = new FeeMode(feeRateInt)
 
-    const allInputs: Input[] = await CellsService.gatherAllInputs(walletId)
+    const allInputs: Input[] = await CellsService.gatherAllInputs(
+      walletId,
+      multisigConfig
+        ? Multisig.getMultisigScript(
+            multisigConfig.blake160s,
+            multisigConfig.r,
+            multisigConfig.m,
+            multisigConfig.n,
+            multisigConfig.lockCodeHash
+          )
+        : undefined
+    )
     if (allInputs.length === 0) {
       throw new CapacityNotEnough()
     }
@@ -490,24 +533,20 @@ export class TransactionGenerator {
     const totalCapacity: bigint =
       allInputs.map(input => BigInt(input.capacity || 0)).reduce((result, c) => result + c, BigInt(0)) - reservedBalance
 
-    const receiveBlake160: string = AddressParser.toBlake160(receiveAddress)
-    const output = new Output(
-      totalCapacity.toString(),
-      SystemScriptInfo.generateSecpScript(receiveBlake160),
-      SystemScriptInfo.generateDaoScript('0x')
-    )
+    const lockScript = AddressParser.parse(receiveAddress)
+    const output = new Output(totalCapacity.toString(), lockScript, SystemScriptInfo.generateDaoScript('0x'))
 
     output.setDaoData('0x0000000000000000')
 
     const outputs: Output[] = [output]
     if (isBalanceReserved) {
-      const changeBlake160 = AddressParser.toBlake160(changeAddress)
-      outputs.push(new Output(reservedBalance.toString(), SystemScriptInfo.generateSecpScript(changeBlake160)))
+      const lockScript = AddressParser.parse(changeAddress)
+      outputs.push(new Output(reservedBalance.toString(), lockScript))
     }
 
     const tx = Transaction.fromObject({
       version: '0',
-      cellDeps: [secpCellDep, daoCellDep],
+      cellDeps: [cellDep, daoCellDep],
       headerDeps: [],
       inputs: allInputs,
       outputs,
@@ -541,9 +580,20 @@ export class TransactionGenerator {
     depositBlockHash: string,
     changeAddress: string,
     fee: string = '0',
-    feeRate: string = '0'
+    feeRate: string = '0',
+    lockClass = {
+      lockArgs: [''],
+      codeHash: SystemScriptInfo.SECP_CODE_HASH,
+      hashType: ScriptHashType.Type,
+    },
+    multisigConfig?: MultisigConfigModel
   ): Promise<Transaction> => {
-    const secpCellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    let cellDep: CellDep
+    if (SystemScriptInfo.isMultiSignCodeHash(lockClass.codeHash)) {
+      cellDep = await SystemScriptInfo.getInstance().getMultiSignCellDep(lockClass.codeHash)
+    } else {
+      cellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
+    }
     const daoCellDep = await SystemScriptInfo.getInstance().getDaoCellDep()
 
     const output = prevOutput
@@ -556,7 +606,7 @@ export class TransactionGenerator {
 
     const tx = Transaction.fromObject({
       version: '0',
-      cellDeps: [secpCellDep, daoCellDep],
+      cellDeps: [cellDep, daoCellDep],
       headerDeps: [depositBlockHash],
       inputs: [],
       outputs,
@@ -581,7 +631,9 @@ export class TransactionGenerator {
       baseSize,
       TransactionGenerator.CHANGE_OUTPUT_SIZE,
       TransactionGenerator.CHANGE_OUTPUT_DATA_SIZE,
-      append
+      append,
+      lockClass,
+      multisigConfig ? [multisigConfig] : []
     )
     const finalFeeInt = BigInt(finalFee)
 
@@ -594,10 +646,10 @@ export class TransactionGenerator {
 
     // change
     if (hasChangeOutput) {
-      const changeBlake160: string = AddressParser.toBlake160(changeAddress)
+      const lockScript = AddressParser.parse(changeAddress)
       const changeCapacity = BigInt(capacities) - finalFeeInt
 
-      const changeOutput = new Output(changeCapacity.toString(), SystemScriptInfo.generateSecpScript(changeBlake160))
+      const changeOutput = new Output(changeCapacity.toString(), lockScript)
 
       tx.addOutput(changeOutput)
     }
@@ -799,14 +851,17 @@ export class TransactionGenerator {
     walletId: string,
     assetAccountInputs: Input[],
     changeBlake160: string,
-    isCKBAccount: boolean
+    isCKBAccount: boolean,
+    isForceDestroy?: boolean
   ) {
     const secpCellDep = await SystemScriptInfo.getInstance().getSecpCellDep()
     const assetAccountInfo = new AssetAccountInfo()
 
     const cellDeps = [secpCellDep, assetAccountInfo.anyoneCanPayCellDep]
     if (assetAccountInputs.some(v => v.type && v.data !== '0x' && BigInt(v.data || 0) !== BigInt(0))) {
-      throw new SudtAcpHaveDataError()
+      if (!isForceDestroy) {
+        throw new SudtAcpHaveDataError()
+      }
     }
     if (!isCKBAccount) {
       cellDeps.push(assetAccountInfo.sudtCellDep, assetAccountInfo.xudtCellDep)

@@ -6,17 +6,24 @@ import {
   useExitOnWalletChange,
   useGoBack,
   useOnWindowResize,
+  calculateFee,
+  clsx,
 } from 'utils'
+import appState from 'states/init/app'
 import { useState as useGlobalState } from 'states'
 import MultisigAddressCreateDialog from 'components/MultisigAddressCreateDialog'
 import MultisigAddressInfo from 'components/MultisigAddressInfo'
 import SendFromMultisigDialog from 'components/SendFromMultisigDialog'
 import { MultisigConfig, changeMultisigSyncStatus, openExternal } from 'services/remote'
 import ApproveMultisigTxDialog from 'components/ApproveMultisigTxDialog'
+import DepositDialog from 'components/DepositDialog'
+import MultisigAddressNervosDAODialog from 'components/MultisigAddressNervosDAODialog'
 import Dialog from 'widgets/Dialog'
 import Table from 'widgets/Table'
 import Tooltip from 'widgets/Tooltip'
+import Toast from 'widgets/Toast'
 import AlertDialog from 'widgets/AlertDialog'
+import CopyZone from 'widgets/CopyZone'
 import {
   Download,
   Search,
@@ -30,14 +37,24 @@ import {
   Confirming,
   Question,
   LineDownArrow,
+  DAODeposit,
+  DAOWithdrawal,
+  Attention,
+  Regenerate,
+  LockCodeHash,
+  Copy,
 } from 'widgets/Icons/icon'
+import { getHeader } from 'services/chain'
 import AttentionCloseDialog from 'widgets/Icons/Attention.png'
 import { HIDE_BALANCE, NetworkType } from 'utils/const'
 import { onEnter } from 'utils/inputDevice'
 import getMultisigSignStatus from 'utils/getMultisigSignStatus'
+import useGetCountDownAndFeeRateStats from 'utils/hooks/useGetCountDownAndFeeRateStats'
 import Button from 'widgets/Button'
 import SetStartBlockNumberDialog from 'components/SetStartBlockNumberDialog'
 import { type TFunction } from 'i18next'
+import hooks from 'components/NervosDAO/hooks'
+import { remindRegenerateMultisigAddress } from 'services/localCache'
 import {
   useSearch,
   useConfigManage,
@@ -68,6 +85,18 @@ const tableActions = [
     key: ApproveKey,
     icon: <Confirm />,
   },
+  {
+    key: 'daoDeposit',
+    icon: <DAODeposit />,
+  },
+  {
+    key: 'daoWithdraw',
+    icon: <DAOWithdrawal />,
+  },
+  {
+    key: 'regenerate',
+    icon: <Regenerate />,
+  },
 ]
 
 const LearnMore = React.memo(({ t }: { t: TFunction }) => (
@@ -87,14 +116,19 @@ const MultisigAddress = () => {
   const [t] = useTranslation()
   useExitOnWalletChange()
   const {
-    wallet: { id: walletId, addresses },
+    app: {
+      send = appState.send,
+      loadings: { sending = false },
+    },
+    wallet,
     chain: {
-      syncState: { bestKnownBlockNumber },
+      syncState: { bestKnownBlockNumber, bestKnownBlockTimestamp },
       networkID,
       connectionStatus,
     },
     settings: { networks = [] },
   } = useGlobalState()
+  const { id: walletId, addresses } = wallet
   const isMainnet = isMainnetUtil(networks, networkID)
   const isLightClient = useMemo(
     () => networks.find(n => n.id === networkID)?.type === NetworkType.Light,
@@ -110,18 +144,28 @@ const MultisigAddress = () => {
     onImportConfig,
     configs,
     onFilterConfig,
+    regenerateConfig,
   } = useConfigManage({
     walletId,
     isMainnet,
   })
-  const { multisigBanlances, multisigSyncProgress } = useSubscription({
+  const { multisigBanlances, multisigDaoBalances, multisigSyncProgress } = useSubscription({
     walletId,
     isMainnet,
     configs: allConfigs,
     isLightClient,
   })
-  const { deleteAction, infoAction, sendAction, approveAction } = useActions({ deleteConfigById })
+  const { deleteAction, infoAction, sendAction, approveAction, daoDepositAction, daoWithdrawAction, regenerateAction } =
+    useActions({
+      deleteConfigById,
+      regenerateConfig,
+    })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false)
+  const { suggestFeeRate } = useGetCountDownAndFeeRateStats()
+  const [globalAPC, setGlobalAPC] = useState(0)
+  const [genesisBlockTimestamp, setGenesisBlockTimestamp] = useState<number | undefined>(undefined)
+  const [notice, setNotice] = useState('')
 
   const onClickItem = useCallback(
     (multisigConfig: MultisigConfig) => (e: React.SyntheticEvent<HTMLButtonElement>) => {
@@ -142,6 +186,20 @@ const MultisigAddress = () => {
         case 'approve':
           approveAction.action(multisigConfig)
           break
+        case 'daoDeposit':
+          daoDepositAction.action(multisigConfig)
+          break
+        case 'daoWithdraw':
+          daoWithdrawAction.action(multisigConfig)
+          break
+        case 'regenerate':
+          if (remindRegenerateMultisigAddress.get()) {
+            regenerateAction.action(multisigConfig)
+          } else {
+            regenerateAction.setConfig(multisigConfig)
+            setShowRegenerateDialog(true)
+          }
+          break
         default:
           break
       }
@@ -160,14 +218,52 @@ const MultisigAddress = () => {
       })),
     [t, selectIds]
   )
-  const listNoBalanceActionOptions = useMemo(
-    () =>
-      listActionOptions.map(item => ({
-        ...item,
-        disabled: item.disabled || item.key === 'send',
-      })),
-    [listActionOptions]
+
+  const getListActionOptions = useCallback(
+    (config: MultisigConfig) => {
+      const options: typeof listActionOptions = []
+      listActionOptions.forEach(item => {
+        if (config.isLegacy && ['daoDeposit', 'daoWithdraw'].includes(item.key)) {
+          return
+        }
+        if (!config.isLegacy && ['regenerate'].includes(item.key)) {
+          return
+        }
+        if (
+          item.key === 'send' &&
+          (!multisigBanlances[config.fullPayload] || multisigBanlances[config.fullPayload] === '0')
+        ) {
+          options.push({
+            ...item,
+            disabled: true,
+          })
+          return
+        }
+        options.push(item)
+      })
+      return options
+    },
+    [listActionOptions, multisigBanlances]
   )
+
+  const daoDisabledMessage = useMemo(() => {
+    if (!wallet.device) return ''
+
+    if (
+      (daoDepositAction.depositFromMultisig && daoDepositAction.isDialogOpen) ||
+      (daoWithdrawAction.withdrawFromMultisig && daoWithdrawAction.isDialogOpen)
+    ) {
+      const multisigConfig = daoDepositAction.depositFromMultisig || daoWithdrawAction.withdrawFromMultisig
+      const { canSign } = getMultisigSignStatus({
+        multisigConfig: multisigConfig!,
+        addresses,
+      })
+
+      return canSign ? 'dao-ledger-notice' : 'dao-hardware-not-match'
+    }
+
+    return ''
+  }, [daoDepositAction, daoWithdrawAction, wallet.device, addresses])
 
   const { keywords, onChange, onBlur } = useSearch(clearSelected, onFilterConfig)
 
@@ -219,6 +315,34 @@ const MultisigAddress = () => {
   }, [updateTipPosition])
   useOnWindowResize(updateTipPosition)
 
+  const genesisBlockHash = useMemo(() => networks.find(v => v.id === networkID)?.genesisHash, [networkID, networks])
+
+  useEffect(() => {
+    if (genesisBlockHash) {
+      getHeader(genesisBlockHash)
+        .then(header => setGenesisBlockTimestamp(+header.timestamp))
+        .catch(err => console.error(err))
+    }
+  }, [])
+
+  hooks.useUpdateGlobalAPC({ bestKnownBlockTimestamp, genesisBlockTimestamp, setGlobalAPC })
+
+  const fee = `${shannonToCKBFormatter(
+    send.generatedTx ? send.generatedTx.fee || calculateFee(send.generatedTx) : '0'
+  )} CKB`
+
+  const onDepositSuccess = useCallback(() => {
+    daoDepositAction.closeDialog()
+    setNotice(t('nervos-dao.deposit-submitted'))
+    if (daoDepositAction.depositFromMultisig) {
+      daoWithdrawAction.action(daoDepositAction.depositFromMultisig)
+    }
+  }, [t, setNotice, daoDepositAction, daoWithdrawAction])
+
+  const showDaoMultisigScriptNotice = useMemo(() => {
+    return allConfigs.some(config => config.isLegacy)
+  }, [allConfigs])
+
   return (
     <div>
       <Dialog
@@ -242,6 +366,23 @@ const MultisigAddress = () => {
         showFooter={false}
       >
         <div className={styles.container}>
+          {showDaoMultisigScriptNotice && (
+            <div className={styles.topTip}>
+              <Attention />
+              <div>
+                <Trans
+                  i18nKey="multisig-address.multisig-script-update-notice"
+                  components={[
+                    <button
+                      type="button"
+                      onClick={() => openExternal('https://github.com/Magickbase/neuron-public-issues/issues/457')}
+                      aria-label="Learn more"
+                    />,
+                  ]}
+                />
+              </div>
+            </div>
+          )}
           <div className={styles.head}>
             <div className={styles.searchBox}>
               <Search />
@@ -299,6 +440,29 @@ const MultisigAddress = () => {
                   render(_, __, item) {
                     return (
                       <div className={styles.address}>
+                        <Tooltip
+                          tip={
+                            <div>
+                              <div className={styles.titleWrap}>
+                                <p>Code Hash</p>
+                                <div className={clsx(styles.badge, item.isLegacy && styles.legacy)}>
+                                  {item.isLegacy ? 'Legacy' : 'Recommended'}
+                                </div>
+                              </div>
+                              <CopyZone content={item.lockCodeHash} className={styles.copyLockCodeHash}>
+                                {item.lockCodeHash}
+                                <Copy />
+                              </CopyZone>
+                            </div>
+                          }
+                          isTriggerNextToChild
+                          tipClassName={styles.lockCodeHashTip}
+                        >
+                          <div className={clsx(styles.lockCodeHash, item.isLegacy && styles.legacy)}>
+                            <LockCodeHash />
+                            <span>@{item.lockCodeHash.slice(2, 10)}</span>
+                          </div>
+                        </Tooltip>
                         {item.fullPayload.slice(0, 5)}...{item.fullPayload.slice(-5)}
                       </div>
                     )
@@ -382,7 +546,15 @@ const MultisigAddress = () => {
                   render(_, __, item, show) {
                     return (
                       <div>
-                        {show ? shannonToCKBFormatter(multisigBanlances[item.fullPayload] || '0') : HIDE_BALANCE} CKB
+                        <div>
+                          {show ? shannonToCKBFormatter(multisigBanlances[item.fullPayload] || '0') : HIDE_BALANCE} CKB
+                        </div>
+                        {!item.isLegacy && multisigDaoBalances[item.fullPayload] && (
+                          <div>
+                            (Nervos DAO:
+                            {show ? shannonToCKBFormatter(multisigDaoBalances[item.fullPayload]) : HIDE_BALANCE} CKB)
+                          </div>
+                        )}
                       </div>
                     )
                   },
@@ -400,10 +572,7 @@ const MultisigAddress = () => {
                           className={styles.tipContent}
                           tip={
                             <div className={styles.actionOptions}>
-                              {(!multisigBanlances[item.fullPayload] || multisigBanlances[item.fullPayload] === '0'
-                                ? listNoBalanceActionOptions
-                                : listActionOptions
-                              ).map(({ key, label, icon, disabled }) => (
+                              {getListActionOptions(item).map(({ key, label, icon, disabled }) => (
                                 <button
                                   type="button"
                                   key={key}
@@ -434,6 +603,8 @@ const MultisigAddress = () => {
               noDataContent={t('multisig-address.no-data')}
             />
           </div>
+
+          <Toast content={notice} onDismiss={() => setNotice('')} />
         </div>
       </Dialog>
 
@@ -480,6 +651,45 @@ const MultisigAddress = () => {
         }}
       />
 
+      <AlertDialog
+        show={showRegenerateDialog}
+        className={styles.regenerateDialog}
+        title={t('multisig-address.regenerate-dialog.title')}
+        message={
+          <div className={styles.regenerateDialogDetail}>
+            <div>
+              {t('multisig-address.regenerate-dialog.detail')}
+              <br />
+              {t('multisig-address.regenerate-dialog.donnot-worry')}
+            </div>
+
+            <label htmlFor="receiver" className={styles.checkboxWrap}>
+              <input
+                type="checkbox"
+                id="receiver"
+                onChange={regenerateAction.handleCheckbox}
+                checked={regenerateAction.isNoRemind}
+              />
+              <span>{t('multisig-address.regenerate-dialog.donnot-remind-again')}</span>
+            </label>
+          </div>
+        }
+        type="warning"
+        onCancel={() => setShowRegenerateDialog(false)}
+        okText={t('multisig-address.regenerate-dialog.title')}
+        onOk={() => {
+          regenerateAction.action(regenerateAction.config!)
+          setShowRegenerateDialog(false)
+        }}
+      />
+
+      <AlertDialog
+        show={!!regenerateAction.regenerateErrorMessage}
+        title={regenerateAction.regenerateErrorMessage}
+        type="failed"
+        onCancel={() => regenerateAction.setRegenerateErrorMessage('')}
+      />
+
       <Dialog
         title={t('multisig-address.multi-details')}
         show={isCloseWarningDialogShow}
@@ -522,6 +732,41 @@ const MultisigAddress = () => {
           onCancel={onCancel}
         />
       ) : null}
+
+      {!daoDisabledMessage && daoDepositAction.depositFromMultisig && daoDepositAction.isDialogOpen ? (
+        <DepositDialog
+          balance={multisigBanlances[daoDepositAction.depositFromMultisig.fullPayload]}
+          wallet={wallet}
+          show
+          fee={fee}
+          onCloseDepositDialog={daoDepositAction.closeDialog}
+          isDepositing={sending}
+          isTxGenerated={!!send.generatedTx}
+          suggestFeeRate={suggestFeeRate}
+          globalAPC={globalAPC}
+          onDepositSuccess={onDepositSuccess}
+          multisigConfig={daoDepositAction.depositFromMultisig}
+        />
+      ) : null}
+
+      {!daoDisabledMessage && daoWithdrawAction.withdrawFromMultisig && daoWithdrawAction.isDialogOpen ? (
+        <MultisigAddressNervosDAODialog
+          balance={multisigBanlances[daoWithdrawAction.withdrawFromMultisig.fullPayload]}
+          closeDialog={daoWithdrawAction.closeDialog}
+          multisigConfig={daoWithdrawAction.withdrawFromMultisig}
+        />
+      ) : null}
+
+      <AlertDialog
+        show={!!daoDisabledMessage}
+        message={t(`multisig-address.${daoDisabledMessage}`)}
+        type="warning"
+        okProps={{ style: { display: 'none' } }}
+        onCancel={() => {
+          daoDepositAction.closeDialog()
+          daoWithdrawAction.closeDialog()
+        }}
+      />
     </div>
   )
 }

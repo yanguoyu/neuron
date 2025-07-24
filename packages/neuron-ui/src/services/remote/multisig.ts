@@ -22,11 +22,13 @@ export type MultisigEntity = MultisigParams & {
   walletId: string
   alias?: string
   startBlockNumber?: number
+  lockCodeHash: string
 }
 
 export type MultisigConfig = MultisigEntity & {
   addresses: string[]
   fullPayload: string
+  isLegacy?: boolean
 }
 
 export const saveMultisigConfig = remoteApi<PartialSome<MultisigEntity, 'id'>, MultisigEntity>('save-multisig-config')
@@ -41,6 +43,10 @@ export const getMultisigBalances = remoteApi<
   { isMainnet: boolean; multisigAddresses: string[] },
   Record<string, string>
 >('get-multisig-balances')
+export const getMultisigDAOBalances = remoteApi<
+  { isMainnet: boolean; multisigAddresses: string[] },
+  Record<string, string>
+>('get-multisig-dao-balances')
 export const generateMultisigTx = remoteApi<{
   items: { address: string; capacity: string }[]
   multisigConfig: MultisigConfig
@@ -54,3 +60,42 @@ export const getMultisigSyncProgress = remoteApi<string[], { hash: string; local
   'get-sync-progress-by-addresses'
 )
 export const changeMultisigSyncStatus = remoteApi<boolean, void>('change-multisig-sync-status')
+
+export const getMultisigDaoData = remoteApi<{ multisigConfig: MultisigConfig }>('get-multisig-dao-data')
+
+export const generateMultisigDaoDepositTx = remoteApi<
+  {
+    capacity: string
+    feeRate: string
+    multisigConfig: MultisigConfig
+  },
+  State.GeneratedTx
+>('generate-multisig-dao-deposit-tx')
+export const generateMultisigDaoDepositAllTx = remoteApi<
+  {
+    isBalanceReserved: boolean
+    feeRate: string
+    multisigConfig: MultisigConfig
+  },
+  State.GeneratedTx
+>('generate-multisig-dao-deposit-all-tx')
+export const generateMultisigDaoWithdrawTx = remoteApi<{
+  outPoint: {
+    txHash: string
+    index: string
+  }
+  feeRate: string
+  multisigConfig: MultisigConfig
+}>('start-withdraw-from-multisig-dao')
+export const generateMultisigDaoClaimTx = remoteApi<{
+  depositOutPoint: {
+    txHash: string
+    index: string
+  }
+  withdrawingOutPoint: {
+    txHash: string
+    index: string
+  }
+  feeRate: string
+  multisigConfig: MultisigConfig
+}>('withdraw-from-multisig-dao')

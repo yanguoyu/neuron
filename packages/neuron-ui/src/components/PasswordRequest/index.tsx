@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Button from 'widgets/Button'
 import TextField from 'widgets/TextField'
 import HardwareSign from 'components/HardwareSign'
-import { ReactComponent as Attention } from 'widgets/Icons/ExperimentalAttention.svg'
+import Attention from 'widgets/Icons/ExperimentalAttention.svg?react'
 import Dialog from 'widgets/Dialog'
 import { Export, Sign } from 'widgets/Icons/icon'
 import { AppActions, useDispatch, useState as useGlobalState } from 'states'
@@ -36,6 +36,7 @@ const PasswordRequest = () => {
     isLoading,
     signType,
     actionType,
+    title,
     disabled,
     password,
     onSubmit,
@@ -62,7 +63,7 @@ const PasswordRequest = () => {
   return (
     <Dialog
       show={!!actionType}
-      title={t(`password-request.${actionType}.title`)}
+      title={t(title || `password-request.${actionType}.title`)}
       contentClassName={styles.content}
       onCancel={onDismiss}
       onConfirm={onSubmit}

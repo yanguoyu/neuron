@@ -211,6 +211,19 @@ export default {
           cancel: '取消',
         },
       },
+      'unrecognized-lock-script': {
+        message: '在此交易中发现了一个未识别的lock script，请检查。',
+        buttons: {
+          cancel: '取消',
+          ignore: '忽略并继续',
+        },
+      },
+      'unrecognized-multisig-transaction': {
+        message: '这是一笔多签交易。请使用对应的钱包在多签地址中批准该交易。',
+        buttons: {
+          cancel: '取消',
+        },
+      },
     },
     prompt: {
       password: {
